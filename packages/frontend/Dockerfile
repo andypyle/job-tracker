@@ -20,9 +20,7 @@ FROM nginx:alpine
 
 COPY --from=builder /app/packages/frontend/dist /usr/share/nginx/html
 COPY packages/frontend/nginx.conf /etc/nginx/templates/default.conf.template
-COPY packages/frontend/docker-entrypoint.sh /docker-entrypoint.sh
-RUN chmod +x /docker-entrypoint.sh
+COPY packages/frontend/docker-entrypoint.sh /docker-entrypoint.d/10-env-config.sh
+RUN chmod +x /docker-entrypoint.d/10-env-config.sh
 
 EXPOSE 80
-
-ENTRYPOINT ["/docker-entrypoint.sh"]

@@ -1,3 +1,4 @@
+import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -10,6 +11,9 @@ from app.routers.opengraph import router as opengraph_router
 from app.services.scheduler import start_scheduler, stop_scheduler
 
 settings = get_settings()
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+logger.info("FRONTEND_URL: %s", settings.FRONTEND_URL)
 
 
 @asynccontextmanager
