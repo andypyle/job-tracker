@@ -235,5 +235,6 @@ See `agents/AGENT_PM.md` for the coordination protocol.
 - Don't skip RLS — every frontend-path query must be user-scoped
 - Don't use a headless browser or Playwright for OpenGraph fetching
 - Don't redefine types that live in `@jobtracker/shared`
-- Don't add dark mode, CSV export, or team features — explicitly out of scope for v1
+- Don't add CSV export or team features — explicitly out of scope for v1
+- Dark mode is supported — use `prefers-color-scheme` media query and CSS custom properties; no theme toggle needed
 - Don't edit files under `.taskmaster/` manually — let TaskMaster manage them
