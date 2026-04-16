@@ -5,7 +5,6 @@ import { STATUS_LABELS } from '@jobtracker/shared'
 import { updateApplication } from '../lib/api'
 import { useMediaQuery } from '../hooks/useMediaQuery'
 import { CompanyAvatar } from './CompanyAvatar'
-import { StatusBadge } from './StatusBadge'
 
 interface ApplicationCardProps {
   application: Application
