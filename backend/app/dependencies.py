@@ -23,7 +23,10 @@ async def get_current_user(authorization: str = Header(...)) -> str:
         async with httpx.AsyncClient() as client:
             response = await client.get(
                 url,
-                headers={"Authorization": f"Bearer {token}"},
+                headers={
+                    "Authorization": f"Bearer {token}",
+                    "apikey": settings.SUPABASE_ANON_KEY,
+                },
                 timeout=10.0,
             )
     except httpx.HTTPError:
