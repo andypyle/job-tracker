@@ -1,0 +1,14 @@
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "packages/frontend/Dockerfile"
+
+[build.buildArgs]
+VITE_SUPABASE_URL = "${{VITE_SUPABASE_URL}}"
+VITE_SUPABASE_ANON_KEY = "${{VITE_SUPABASE_ANON_KEY}}"
+VITE_API_BASE_URL = "${{VITE_API_BASE_URL}}"
+
+[deploy]
+healthcheckPath = "/health"
+healthcheckTimeout = 30
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 3
