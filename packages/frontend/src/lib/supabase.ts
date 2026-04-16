@@ -1,8 +1,11 @@
 import { createClient } from '@supabase/supabase-js'
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string
+declare global {
+  interface Window { __env__?: Record<string, string> }
+}
+
+const supabaseUrl = window.__env__?.VITE_SUPABASE_URL || import.meta.env.VITE_SUPABASE_URL as string
+const supabaseAnonKey = window.__env__?.VITE_SUPABASE_ANON_KEY || import.meta.env.VITE_SUPABASE_ANON_KEY as string
 
 if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error(

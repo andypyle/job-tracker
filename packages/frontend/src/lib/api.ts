@@ -12,7 +12,7 @@ import { supabase } from './supabase'
  * Never call fetch() directly in components — use this instance.
  */
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL as string,
+  baseURL: window.__env__?.VITE_API_BASE_URL || import.meta.env.VITE_API_BASE_URL as string,
   headers: {
     'Content-Type': 'application/json',
   },

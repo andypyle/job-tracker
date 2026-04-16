@@ -13,16 +13,6 @@ RUN pnpm install --frozen-lockfile
 COPY packages/shared/ ./packages/shared/
 COPY packages/frontend/ ./packages/frontend/
 
-ARG VITE_SUPABASE_URL
-ARG VITE_SUPABASE_ANON_KEY
-ARG VITE_API_BASE_URL
-ENV VITE_SUPABASE_URL=$VITE_SUPABASE_URL
-ENV VITE_SUPABASE_ANON_KEY=$VITE_SUPABASE_ANON_KEY
-ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
-
-RUN echo "VITE_SUPABASE_URL=$VITE_SUPABASE_URL"
-RUN node -e "console.log('node process.env.VITE_SUPABASE_URL:', process.env.VITE_SUPABASE_URL)"
-
 RUN pnpm --filter frontend build
 
 
@@ -30,5 +20,9 @@ FROM nginx:alpine
 
 COPY --from=builder /app/packages/frontend/dist /usr/share/nginx/html
 COPY packages/frontend/nginx.conf /etc/nginx/templates/default.conf.template
+COPY packages/frontend/docker-entrypoint.sh /docker-entrypoint.sh
+RUN chmod +x /docker-entrypoint.sh
 
 EXPOSE 80
+
+ENTRYPOINT ["/docker-entrypoint.sh"]
