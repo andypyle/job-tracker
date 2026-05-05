@@ -82,10 +82,10 @@ export default function App() {
         >
           <Route path="/" element={<DashboardPage />} />
 
-          {/* /jobs → redirect to /jobs/all */}
-          <Route path="/jobs" element={<Navigate to="/jobs/all" replace />} />
+          {/* /jobs → redirect to /jobs/active */}
+          <Route path="/jobs" element={<Navigate to="/jobs/active" replace />} />
 
-          {/* /jobs/:status — e.g. /jobs/applied, /jobs/all */}
+          {/* /jobs/:status — e.g. /jobs/active, /jobs/rejected, /jobs/applied, /jobs/all */}
           <Route path="/jobs/:status" element={<JobsPage />} />
 
           {/* Application detail */}

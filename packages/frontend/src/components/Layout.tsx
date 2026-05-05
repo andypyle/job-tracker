@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
+import { useApplicationCounts } from '../hooks/useApplicationCounts'
 
 // SVG icon components — no emojis, consistent 24x24 viewBox
 function IconLayoutDashboard() {
@@ -34,11 +35,30 @@ function IconBriefcase() {
       strokeWidth={2}
       strokeLinecap="round"
       strokeLinejoin="round"
-      className="w-5 h-5"
+      className="w-4 h-4"
       aria-hidden="true"
     >
       <rect x="2" y="7" width="20" height="14" rx="2" ry="2" />
       <path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2" />
+    </svg>
+  )
+}
+
+function IconBan() {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="w-4 h-4"
+      aria-hidden="true"
+    >
+      <circle cx="12" cy="12" r="10" />
+      <line x1="4.93" y1="4.93" x2="19.07" y2="19.07" />
     </svg>
   )
 }
@@ -83,7 +103,7 @@ function IconMenu() {
   )
 }
 
-function IconX() {
+function IconXClose() {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -121,15 +141,30 @@ function IconUser() {
   )
 }
 
-const navLinks = [
-  { to: '/', label: 'Dashboard', icon: <IconLayoutDashboard />, end: true },
-  { to: '/jobs/all', label: 'Jobs', icon: <IconBriefcase />, end: false },
-]
+// ---------------------------------------------------------------------------
+// Count badge shown next to Jobs sub-links
+// ---------------------------------------------------------------------------
+interface CountBadgeProps {
+  count: number
+  isLoading: boolean
+}
+
+function CountBadge({ count, isLoading }: CountBadgeProps) {
+  return (
+    <span
+      className="ml-auto text-xs font-medium tabular-nums px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-500 min-w-[1.5rem] text-center"
+      aria-label={isLoading ? 'loading count' : `${count} applications`}
+    >
+      {isLoading ? '—' : count}
+    </span>
+  )
+}
 
 export function Layout() {
   const { user, signOut } = useAuth()
   const navigate = useNavigate()
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const { active, rejected, isLoading: countsLoading } = useApplicationCounts()
 
   const handleSignOut = async () => {
     await signOut()
@@ -144,6 +179,15 @@ export function Layout() {
       isActive
         ? 'bg-teal-50 text-teal-700'
         : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900',
+    ].join(' ')
+
+  // Sub-link class for the indented Jobs children — slightly smaller, indented
+  const subNavLinkClass = ({ isActive }: { isActive: boolean }) =>
+    [
+      'flex items-center gap-2.5 pl-8 pr-3 py-2 rounded-lg text-sm font-medium transition-colors duration-150 cursor-pointer',
+      isActive
+        ? 'bg-teal-50 text-teal-700'
+        : 'text-slate-500 hover:bg-slate-50 hover:text-slate-800',
     ].join(' ')
 
   const sidebarContent = (
@@ -181,18 +225,49 @@ export function Layout() {
 
       {/* Nav links */}
       <nav className="flex-1 px-3 py-4 space-y-1" aria-label="Main navigation">
-        {navLinks.map(({ to, label, icon, end }) => (
+        {/* Dashboard */}
+        <NavLink
+          to="/"
+          end
+          className={navLinkClass}
+          onClick={closeSidebar}
+        >
+          <IconLayoutDashboard />
+          Dashboard
+        </NavLink>
+
+        {/* Jobs section — non-clickable category label + two sub-links */}
+        <div className="pt-3">
+          <p
+            className="px-3 mb-1 text-xs font-semibold uppercase tracking-wider"
+            style={{ color: 'var(--color-text-muted)' }}
+            aria-hidden="true"
+          >
+            Jobs
+          </p>
+
+          {/* Active sub-link */}
           <NavLink
-            key={to}
-            to={to}
-            end={end}
-            className={navLinkClass}
+            to="/jobs/active"
+            className={subNavLinkClass}
             onClick={closeSidebar}
           >
-            {icon}
-            {label}
+            <IconBriefcase />
+            <span>Active</span>
+            <CountBadge count={active} isLoading={countsLoading} />
           </NavLink>
-        ))}
+
+          {/* Rejected sub-link */}
+          <NavLink
+            to="/jobs/rejected"
+            className={subNavLinkClass}
+            onClick={closeSidebar}
+          >
+            <IconBan />
+            <span>Rejected</span>
+            <CountBadge count={rejected} isLoading={countsLoading} />
+          </NavLink>
+        </div>
       </nav>
 
       {/* User info + sign out */}
@@ -258,7 +333,7 @@ export function Layout() {
           className="absolute top-4 right-4 p-1 rounded-md text-slate-400 hover:text-slate-600 md:hidden cursor-pointer"
           aria-label="Close sidebar"
         >
-          <IconX />
+          <IconXClose />
         </button>
         {sidebarContent}
       </aside>

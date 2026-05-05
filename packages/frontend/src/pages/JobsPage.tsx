@@ -2,9 +2,43 @@ import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { URL_TO_STATUS, STATUS_LABELS } from '@jobtracker/shared'
+import type { Application, ApplicationStatus } from '@jobtracker/shared'
 import { getApplications } from '../lib/api'
 import { ApplicationCard } from '../components/ApplicationCard'
 import { ApplicationModal } from '../components/ApplicationModal'
+
+// ---------------------------------------------------------------------------
+// Multi-status filter config for "active" and "rejected" aggregate views.
+// The backend only accepts a single status value, so these views fetch all
+// applications and filter client-side.
+// ---------------------------------------------------------------------------
+
+/** Statuses that fall into the "rejected" aggregate view. */
+const REJECTED_STATUSES = new Set<ApplicationStatus>(['Rejected', 'Role Eliminated'])
+
+/**
+ * Returns true when a URL status param requires a client-side multi-status
+ * filter (i.e., it cannot be handled by a single backend status param).
+ */
+function isAggregateParam(param: string): param is 'active' | 'rejected' {
+  return param === 'active' || param === 'rejected'
+}
+
+/**
+ * Apply the client-side filter for aggregate views.
+ * - 'active':   exclude Rejected and Role Eliminated
+ * - 'rejected': include only Rejected and Role Eliminated
+ */
+function applyAggregateFilter(
+  apps: Application[],
+  param: 'active' | 'rejected',
+): Application[] {
+  if (param === 'rejected') {
+    return apps.filter((a) => REJECTED_STATUSES.has(a.status))
+  }
+  // active
+  return apps.filter((a) => !REJECTED_STATUSES.has(a.status))
+}
 
 // ---------------------------------------------------------------------------
 // Skeleton loader — 3 placeholder cards shown while fetching
@@ -102,6 +136,8 @@ function EmptyState({ isAllFilter, onAddClick }: EmptyStateProps) {
 /** Maps a URL param slug to a human-readable page heading. */
 function getPageTitle(statusParam: string): string {
   if (statusParam === 'all') return 'All Applications'
+  if (statusParam === 'active') return 'Active Applications'
+  if (statusParam === 'rejected') return 'Rejected'
   const status = URL_TO_STATUS[statusParam]
   return status ? STATUS_LABELS[status] : 'Applications'
 }
@@ -111,29 +147,47 @@ function getPageTitle(statusParam: string): string {
 // ---------------------------------------------------------------------------
 
 export function JobsPage() {
-  const { status: statusParam = 'all' } = useParams<{ status: string }>()
+  const { status: statusParam = 'active' } = useParams<{ status: string }>()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const [modalOpen, setModalOpen] = useState(false)
   const [search, setSearch] = useState('')
 
-  // Resolve the URL param to an ApplicationStatus or undefined (no filter).
-  // URL_TO_STATUS returns null for 'all' meaning "no filter".
+  // Determine whether this view uses a single-status backend filter or a
+  // client-side aggregate filter (active / rejected).
+  const isAggregate = isAggregateParam(statusParam)
+
+  // For aggregate views: fetch all and filter client-side; share the cache
+  // entry ['applications', 'all'] with the counts hook so the sidebar stays
+  // in sync without a separate network request.
+  // For single-status views: filter on the backend as before.
   const statusFilter =
-    statusParam in URL_TO_STATUS ? URL_TO_STATUS[statusParam] ?? undefined : undefined
+    !isAggregate && statusParam in URL_TO_STATUS
+      ? (URL_TO_STATUS[statusParam] ?? undefined)
+      : undefined
+
+  const queryKey = isAggregate
+    ? (['applications', 'all'] as const)
+    : (['applications', statusParam] as const)
 
   const {
-    data: applications,
+    data: rawApplications,
     isLoading,
     isError,
     error,
   } = useQuery({
-    queryKey: ['applications', statusParam],
+    queryKey,
     queryFn: () => getApplications(statusFilter),
   })
 
+  // Apply client-side aggregate filter when needed
+  const applications = isAggregate && rawApplications
+    ? applyAggregateFilter(rawApplications, statusParam)
+    : rawApplications
+
   const pageTitle = getPageTitle(statusParam)
-  const isAllFilter = statusParam === 'all'
+  // Empty-state CTA prompt is only shown for the all/active views (not rejected)
+  const isAllFilter = statusParam === 'all' || statusParam === 'active'
 
   const filteredApplications = applications
     ? search.trim()
@@ -235,7 +289,7 @@ export function JobsPage() {
         onClose={() => setModalOpen(false)}
         onSuccess={() => {
           setModalOpen(false)
-          queryClient.invalidateQueries({ queryKey: ['applications', statusParam] })
+          // Invalidate both the shared 'all' cache and any single-status cache
           queryClient.invalidateQueries({ queryKey: ['applications'] })
         }}
       />
