@@ -160,6 +160,7 @@ export interface OpenGraphResult {
   title: string | null
   company: string | null
   logo_url: string | null
+  compensation: string | null
 }
 
 /**

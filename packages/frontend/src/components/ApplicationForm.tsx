@@ -316,6 +316,9 @@ export function ApplicationForm({ application, onSuccess, onCancel }: Applicatio
       if (og.logo_url) {
         setValue('company_logo_url', og.logo_url, { shouldValidate: false, shouldDirty: true })
       }
+      if (og.compensation && !getValues('compensation')) {
+        setValue('compensation', og.compensation, { shouldValidate: false, shouldDirty: true })
+      }
     } catch {
       // Silently ignore all OG errors per spec — never surface to user.
     } finally {
