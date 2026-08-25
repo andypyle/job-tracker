@@ -138,8 +138,8 @@ async def get_application(
     row["cover_letter_url"] = await get_signed_url(row["cover_letter_path"]) if row.get("cover_letter_path") else None
 
     # Fetch status history
-    admin_client = _get_admin_client()
     try:
+        admin_client = _get_admin_client()
         history_result = (
             admin_client.table("application_status_history")
             .select("*")
