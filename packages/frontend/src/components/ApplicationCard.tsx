@@ -133,10 +133,10 @@ export function ApplicationCard({ application, onClick }: ApplicationCardProps) 
 
 // Map status to the same Tailwind colors used in StatusBadge, but as inline styles
 // so the select element can inherit them (Tailwind classes don't apply to option elements).
-const STATUS_BG:      Record<ApplicationStatus, string> = { Applied:'#DBEAFE', Interviewing:'#FEF3C7', Unlikely:'#F3F4F6', Offer:'#D1FAE5', Rejected:'#FEE2E2', 'Role Eliminated':'#F1F5F9' }
-const STATUS_TEXT:    Record<ApplicationStatus, string> = { Applied:'#1D4ED8', Interviewing:'#B45309', Unlikely:'#6B7280', Offer:'#047857', Rejected:'#DC2626', 'Role Eliminated':'#475569' }
-const STATUS_BG_DARK: Record<ApplicationStatus, string> = { Applied:'#1e3a5f', Interviewing:'#3d2a0a', Unlikely:'#1f2937', Offer:'#0d3321', Rejected:'#3b0f0f', 'Role Eliminated':'#1e293b' }
-const STATUS_TEXT_DARK:Record<ApplicationStatus,string> = { Applied:'#93C5FD', Interviewing:'#FCD34D', Unlikely:'#9CA3AF', Offer:'#6EE7B7', Rejected:'#FCA5A5', 'Role Eliminated':'#94A3B8' }
+const STATUS_BG:      Record<ApplicationStatus, string> = { Applied:'#DBEAFE', Interviewing:'#e4ede0', Unlikely:'#F3F4F6', Offer:'#D1FAE5', Rejected:'#FEE2E2', 'Role Eliminated':'#F1F5F9' }
+const STATUS_TEXT:    Record<ApplicationStatus, string> = { Applied:'#1D4ED8', Interviewing:'#4a6940', Unlikely:'#6B7280', Offer:'#047857', Rejected:'#DC2626', 'Role Eliminated':'#475569' }
+const STATUS_BG_DARK: Record<ApplicationStatus, string> = { Applied:'#1e3a5f', Interviewing:'#1c2e18', Unlikely:'#1f2937', Offer:'#0d3321', Rejected:'#3b0f0f', 'Role Eliminated':'#1e293b' }
+const STATUS_TEXT_DARK:Record<ApplicationStatus,string> = { Applied:'#93C5FD', Interviewing:'#9dc48a', Unlikely:'#9CA3AF', Offer:'#6EE7B7', Rejected:'#FCA5A5', 'Role Eliminated':'#94A3B8' }
 
 function getStatusBg(s: ApplicationStatus, dark: boolean)   { return (dark ? STATUS_BG_DARK : STATUS_BG)[s]   ?? '#F3F4F6' }
 function getStatusText(s: ApplicationStatus, dark: boolean) { return (dark ? STATUS_TEXT_DARK : STATUS_TEXT)[s] ?? '#6B7280' }

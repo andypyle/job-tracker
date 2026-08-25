@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { STATUS_COLORS, STATUS_LABELS } from '@jobtracker/shared'
+import type { StatusChange } from '@jobtracker/shared'
 import { getApplication, deleteApplication } from '../lib/api'
 import { useMediaQuery } from '../hooks/useMediaQuery'
 import { StatusBadge } from '../components/StatusBadge'
@@ -149,6 +151,166 @@ function formatDate(iso: string): string {
   } catch {
     return iso
   }
+}
+
+// ---------------------------------------------------------------------------
+// Format an ISO datetime to "Aug 25, 2026 at 2:34 PM"
+// ---------------------------------------------------------------------------
+function formatDateTime(iso: string): string {
+  try {
+    const date = new Date(iso)
+    const datePart = new Intl.DateTimeFormat('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    }).format(date)
+    const timePart = new Intl.DateTimeFormat('en-US', {
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true,
+    }).format(date)
+    return `${datePart} at ${timePart}`
+  } catch {
+    return iso
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Status History Timeline
+// ---------------------------------------------------------------------------
+
+interface StatusHistoryTimelineProps {
+  history: StatusChange[]
+}
+
+/**
+ * Vertical timeline of status changes for an application.
+ * Displays newest entries first (reverse chronological).
+ * Uses STATUS_COLORS from @jobtracker/shared for status badge colors.
+ * Handles the null old_status case (initial creation) with a dedicated label.
+ */
+function StatusHistoryTimeline({ history }: StatusHistoryTimelineProps) {
+  if (history.length === 0) {
+    return (
+      <p className="text-sm py-4 text-center" style={{ color: 'var(--color-text-muted)' }}>
+        No status history recorded yet.
+      </p>
+    )
+  }
+
+  // Sort newest-first for display
+  const sorted = [...history].sort(
+    (a, b) => new Date(b.changed_at).getTime() - new Date(a.changed_at).getTime(),
+  )
+
+  return (
+    <ol className="relative" aria-label="Status history">
+      {sorted.map((entry, index) => {
+        const isLast = index === sorted.length - 1
+        const colors = STATUS_COLORS[entry.new_status]
+        const isCreation = entry.old_status === null
+
+        return (
+          <li key={entry.id} className="relative flex gap-4 pb-6 last:pb-0">
+            {/* Vertical connector line — hidden for the last item */}
+            {!isLast && (
+              <div
+                className="absolute left-3.5 top-7 bottom-0 w-px bg-gray-200 dark:bg-gray-700"
+                aria-hidden="true"
+              />
+            )}
+
+            {/* Timeline dot */}
+            <div
+              className={`relative z-10 flex h-7 w-7 shrink-0 items-center justify-center rounded-full ${colors.bg}`}
+              aria-hidden="true"
+            >
+              {isCreation ? (
+                // Star icon for initial creation
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 20 20"
+                  fill="currentColor"
+                  className={`w-3.5 h-3.5 ${colors.text}`}
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M10.868 2.884c-.321-.772-1.415-.772-1.736 0l-1.83 4.401-4.753.381c-.833.067-1.171 1.107-.536 1.651l3.62 3.102-1.106 4.637c-.194.813.691 1.456 1.405 1.02L10 15.591l4.069 2.485c.713.436 1.598-.207 1.404-1.02l-1.106-4.637 3.62-3.102c.635-.544.297-1.584-.536-1.65l-4.752-.382-1.831-4.401Z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+              ) : (
+                // Arrow icon for status transitions
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 20 20"
+                  fill="currentColor"
+                  className={`w-3.5 h-3.5 ${colors.text}`}
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16Zm3.857-9.809a.75.75 0 0 0-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 1 0-1.06 1.061l2.5 2.5a.75.75 0 0 0 1.137-.089l4-5.5Z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+              )}
+            </div>
+
+            {/* Content */}
+            <div className="flex-1 min-w-0 pt-0.5">
+              <div className="flex flex-wrap items-center gap-2 mb-1">
+                {isCreation ? (
+                  <span className="text-sm font-medium" style={{ color: 'var(--color-text)' }}>
+                    Application created
+                  </span>
+                ) : (
+                  <>
+                    {entry.old_status && (
+                      <span className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
+                        {STATUS_LABELS[entry.old_status]}
+                      </span>
+                    )}
+                    {entry.old_status && (
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        viewBox="0 0 16 16"
+                        fill="currentColor"
+                        className="w-3 h-3 shrink-0 text-gray-400"
+                        aria-hidden="true"
+                      >
+                        <path
+                          fillRule="evenodd"
+                          d="M6.22 4.22a.75.75 0 0 1 1.06 0l3.25 3.25a.75.75 0 0 1 0 1.06l-3.25 3.25a.75.75 0 0 1-1.06-1.06L9.19 8 6.22 5.03a.75.75 0 0 1 0-1.06Z"
+                          clipRule="evenodd"
+                        />
+                      </svg>
+                    )}
+                    <span
+                      className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${colors.bg} ${colors.text}`}
+                    >
+                      {STATUS_LABELS[entry.new_status]}
+                    </span>
+                  </>
+                )}
+                {entry.is_automatic && (
+                  <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400">
+                    Auto
+                  </span>
+                )}
+              </div>
+              <time
+                dateTime={entry.changed_at}
+                className="text-xs"
+                style={{ color: 'var(--color-text-muted)' }}
+              >
+                {formatDateTime(entry.changed_at)}
+              </time>
+            </div>
+          </li>
+        )
+      })}
+    </ol>
+  )
 }
 
 // ---------------------------------------------------------------------------
@@ -367,7 +529,7 @@ export function ApplicationDetailPage() {
       </div>
 
       {/* Detail fields card */}
-      <div className="bg-white rounded-2xl px-6 py-2 shadow-sm">
+      <div className="bg-white rounded-2xl px-6 py-2 shadow-sm mb-4">
         {application.job_post_url && (
           <FieldRow label="Job Post URL">
             <a
@@ -438,6 +600,17 @@ export function ApplicationDetailPage() {
             <span style={{ color: 'var(--color-text-muted)' }}>No files attached</span>
           )}
         </FieldRow>
+      </div>
+
+      {/* Status History card */}
+      <div className="bg-white rounded-2xl px-6 py-5 shadow-sm">
+        <h2
+          className="text-sm font-semibold mb-4"
+          style={{ color: 'var(--color-text)' }}
+        >
+          Status History
+        </h2>
+        <StatusHistoryTimeline history={application.status_history ?? []} />
       </div>
 
       {/* Edit modal */}

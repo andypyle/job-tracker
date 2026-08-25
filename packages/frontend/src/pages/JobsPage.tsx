@@ -143,6 +143,84 @@ function getPageTitle(statusParam: string): string {
 }
 
 // ---------------------------------------------------------------------------
+// Currently Interviewing section
+// ---------------------------------------------------------------------------
+
+interface InterviewingSpotlightProps {
+  applications: Application[]
+  onCardClick: (id: string) => void
+}
+
+/**
+ * Renders a highlighted section at the top of the list showing all
+ * applications currently in the "Interviewing" status. Uses the amber
+ * status color from STATUS_COLORS for a subtle visual distinction.
+ *
+ * Only renders when there is at least one interviewing application.
+ */
+function InterviewingSpotlight({ applications, onCardClick }: InterviewingSpotlightProps) {
+  const interviewing = applications.filter((a) => a.status === 'Interviewing')
+
+  if (interviewing.length === 0) return null
+
+  return (
+    <section
+      aria-label="Currently Interviewing"
+      className="mb-6 rounded-2xl border border-sage-200 bg-sage-50 overflow-hidden"
+      style={{
+        backgroundColor: 'color-mix(in srgb, #87a878 12%, transparent)',
+        borderColor: 'color-mix(in srgb, #87a878 30%, transparent)',
+      }}
+    >
+      {/* Section header */}
+      <div
+        className="flex items-center gap-2.5 px-4 pt-4 pb-3 border-b"
+        style={{ borderColor: 'color-mix(in srgb, #87a878 30%, transparent)' }}
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={2}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          className="w-4 h-4 shrink-0"
+          style={{ color: '#5a7a4a' }}
+          aria-hidden="true"
+        >
+          <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
+          <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+          <line x1="12" y1="19" x2="12" y2="23" />
+          <line x1="8" y1="23" x2="16" y2="23" />
+        </svg>
+        <h2 className="text-sm font-semibold" style={{ color: '#5a7a4a' }}>
+          Currently Interviewing
+        </h2>
+        <span
+          className="inline-flex items-center justify-center min-w-[1.25rem] h-5 px-1.5 rounded-full text-xs font-bold"
+          style={{ backgroundColor: 'color-mix(in srgb, #87a878 35%, transparent)', color: '#3d5c2e' }}
+        >
+          {interviewing.length}
+        </span>
+      </div>
+
+      {/* Application cards */}
+      <ul className="p-3 space-y-2.5" role="list">
+        {interviewing.map((app) => (
+          <li key={app.id} className="rounded-r-2xl overflow-hidden" style={{ borderLeft: '4px solid #87a878' }}>
+            <ApplicationCard
+              application={app}
+              onClick={() => onCardClick(app.id)}
+            />
+          </li>
+        ))}
+      </ul>
+    </section>
+  )
+}
+
+// ---------------------------------------------------------------------------
 // JobsPage
 // ---------------------------------------------------------------------------
 
@@ -189,13 +267,24 @@ export function JobsPage() {
   // Empty-state CTA prompt is only shown for the all/active views (not rejected)
   const isAllFilter = statusParam === 'all' || statusParam === 'active'
 
+  // Show the interviewing spotlight only on views where interviewing apps
+  // are visible: the "all" view, the "active" aggregate view, and when no
+  // search filter is active (to avoid confusing duplication with search results).
+  const showInterviewingSpotlight =
+    !search.trim() &&
+    (statusParam === 'all' || statusParam === 'active') &&
+    applications != null &&
+    applications.some((a) => a.status === 'Interviewing')
+
   const filteredApplications = applications
     ? search.trim()
       ? applications.filter((a) =>
           a.company.toLowerCase().includes(search.trim().toLowerCase()) ||
           a.job_title.toLowerCase().includes(search.trim().toLowerCase())
         )
-      : applications
+      : showInterviewingSpotlight
+        ? applications.filter((a) => a.status !== 'Interviewing')
+        : applications
     : []
 
   return (
@@ -270,16 +359,26 @@ export function JobsPage() {
               No applications match "{search}"
             </p>
           ) : (
-            <ul className="space-y-3" role="list" aria-label={pageTitle}>
-              {filteredApplications.map((app) => (
-                <li key={app.id}>
-                  <ApplicationCard
-                    application={app}
-                    onClick={() => navigate(`/jobs/detail/${app.id}`)}
-                  />
-                </li>
-              ))}
-            </ul>
+            <>
+              {/* Currently Interviewing spotlight — only on all/active, no search */}
+              {showInterviewingSpotlight && (
+                <InterviewingSpotlight
+                  applications={applications}
+                  onCardClick={(id) => navigate(`/jobs/detail/${id}`)}
+                />
+              )}
+
+              <ul className="space-y-3" role="list" aria-label={pageTitle}>
+                {filteredApplications.map((app) => (
+                  <li key={app.id}>
+                    <ApplicationCard
+                      application={app}
+                      onClick={() => navigate(`/jobs/detail/${app.id}`)}
+                    />
+                  </li>
+                ))}
+              </ul>
+            </>
           )}
         </>
       )}

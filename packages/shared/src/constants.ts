@@ -5,7 +5,7 @@ export const STATUS_COLORS: Record<
   { bg: string; text: string }
 > = {
   Applied: { bg: 'bg-blue-100', text: 'text-blue-700' },
-  Interviewing: { bg: 'bg-amber-100', text: 'text-amber-700' },
+  Interviewing: { bg: 'bg-[#e4ede0]', text: 'text-[#4a6940]' },
   Unlikely: { bg: 'bg-gray-100', text: 'text-gray-500' },
   Offer: { bg: 'bg-emerald-100', text: 'text-emerald-700' },
   Rejected: { bg: 'bg-red-100', text: 'text-red-600' },

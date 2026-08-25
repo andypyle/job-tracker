@@ -8,6 +8,7 @@ from app.config import get_settings
 from app.routers.applications import router as applications_router
 from app.routers.files import router as files_router
 from app.routers.opengraph import router as opengraph_router
+from app.routers.stats import router as stats_router
 from app.services.scheduler import start_scheduler, stop_scheduler
 
 settings = get_settings()
@@ -36,6 +37,7 @@ app.add_middleware(
 app.include_router(opengraph_router, prefix="/opengraph", tags=["opengraph"])
 app.include_router(applications_router, prefix="/applications", tags=["applications"])
 app.include_router(files_router, prefix="/applications", tags=["files"])
+app.include_router(stats_router, prefix="/stats", tags=["stats"])
 
 
 @app.get("/health")

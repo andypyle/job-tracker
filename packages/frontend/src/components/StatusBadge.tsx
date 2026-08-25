@@ -7,7 +7,7 @@ interface StatusBadgeProps {
 
 const BADGE_COLORS: Record<ApplicationStatus, { bg: string; text: string; darkBg: string; darkText: string }> = {
   Applied:          { bg: '#DBEAFE', text: '#1D4ED8', darkBg: '#1e3a5f', darkText: '#93C5FD' },
-  Interviewing:     { bg: '#FEF3C7', text: '#B45309', darkBg: '#3d2a0a', darkText: '#FCD34D' },
+  Interviewing:     { bg: '#e4ede0', text: '#4a6940', darkBg: '#1c2e18', darkText: '#9dc48a' },
   Unlikely:         { bg: '#F3F4F6', text: '#6B7280', darkBg: '#1f2937', darkText: '#9CA3AF' },
   Offer:            { bg: '#D1FAE5', text: '#047857', darkBg: '#0d3321', darkText: '#6EE7B7' },
   Rejected:         { bg: '#FEE2E2', text: '#DC2626', darkBg: '#3b0f0f', darkText: '#FCA5A5' },

@@ -43,6 +43,15 @@ class ApplicationUpdate(BaseModel):
     status: Optional[ApplicationStatus] = None
 
 
+class StatusHistory(BaseModel):
+    id: str
+    application_id: str
+    old_status: Optional[str] = None
+    new_status: str
+    changed_at: datetime
+    is_automatic: bool
+
+
 class ApplicationResponse(ApplicationBase):
     model_config = ConfigDict(from_attributes=True)
 
@@ -55,3 +64,4 @@ class ApplicationResponse(ApplicationBase):
     cover_letter_url: Optional[str] = None
     created_at: datetime
     updated_at: datetime
+    status_history: list[StatusHistory] = []

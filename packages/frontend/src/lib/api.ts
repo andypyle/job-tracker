@@ -4,6 +4,7 @@ import type {
   ApplicationCreate,
   ApplicationStatus,
   ApplicationUpdate,
+  TimelineStats,
 } from '@jobtracker/shared'
 import { supabase } from './supabase'
 
@@ -171,6 +172,22 @@ export async function fetchOpenGraph(url: string): Promise<OpenGraphResult> {
   const res = await api.post<ApiEnvelope<OpenGraphResult>>('/opengraph', {
     url,
   })
+  return unwrap(res.data)
+}
+
+// ---------------------------------------------------------------------------
+// Stats / Timeline
+// ---------------------------------------------------------------------------
+
+/**
+ * Fetch velocity and timeline metrics from GET /stats/timeline.
+ *
+ * All three metric values may be null when there is insufficient history
+ * (e.g., status tracking was just enabled and most applications have no
+ * recorded transitions yet). The UI must handle nulls gracefully.
+ */
+export async function getTimelineStats(): Promise<TimelineStats> {
+  const res = await api.get<ApiEnvelope<TimelineStats>>('/stats/timeline')
   return unwrap(res.data)
 }
 

@@ -20,7 +20,7 @@ interface StatusChartProps {
  */
 const STATUS_FILL_COLORS: Record<ApplicationStatus, string> = {
   Applied: '#3B82F6',
-  Interviewing: '#F59E0B',
+  Interviewing: '#87a878',
   Unlikely: '#9CA3AF',
   Offer: '#10B981',
   Rejected: '#EF4444',

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { getApplications } from '../lib/api'
+import { getApplications, getTimelineStats } from '../lib/api'
+import type { TimelineStats } from '@jobtracker/shared'
 import { StatCard } from '../components/StatCard'
 import { ApplicationsChart } from '../components/ApplicationsChart'
 import { StatusChart } from '../components/StatusChart'
@@ -86,6 +87,69 @@ function IconChart() {
         strokeLinecap="round"
         strokeLinejoin="round"
         d="M2.25 18L9 11.25l4.306 4.307a11.95 11.95 0 015.814-5.519l2.74-1.22m0 0l-5.94-2.28m5.94 2.28l-2.28 5.941"
+      />
+    </svg>
+  )
+}
+
+/** Clock icon — used for response-time metric card */
+function IconClock() {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      fill="none"
+      viewBox="0 0 24 24"
+      strokeWidth={1.5}
+      stroke="currentColor"
+      className="w-5 h-5"
+      aria-hidden="true"
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z"
+      />
+    </svg>
+  )
+}
+
+/** Arrow trending up icon — used for interview rate metric card */
+function IconTrendingUp() {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      fill="none"
+      viewBox="0 0 24 24"
+      strokeWidth={1.5}
+      stroke="currentColor"
+      className="w-5 h-5"
+      aria-hidden="true"
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M2.25 18L9 11.25l4.306 4.307a11.95 11.95 0 015.814-5.519l2.74-1.22m0 0l-5.94-2.28m5.94 2.28l-2.28 5.941"
+      />
+    </svg>
+  )
+}
+
+/** Calendar days icon — used for interview-duration metric card */
+function IconCalendar() {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      fill="none"
+      viewBox="0 0 24 24"
+      strokeWidth={1.5}
+      stroke="currentColor"
+      className="w-5 h-5"
+      aria-hidden="true"
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5"
       />
     </svg>
   )
@@ -187,6 +251,170 @@ function EmptyState({ onAdd }: { onAdd: () => void }) {
 }
 
 // ---------------------------------------------------------------------------
+// TimelineMetricCard
+// ---------------------------------------------------------------------------
+
+interface TimelineMetricCardProps {
+  label: string
+  /** Formatted value string, or null when there is not enough data */
+  value: string | null
+  /** First line of subtext shown below the value */
+  sublabel?: string
+  /** Second line of subtext (e.g., sample size note) */
+  sublabel2?: string
+  icon: React.ReactNode
+  accentColor: string
+}
+
+/**
+ * A metric card for timeline stats that mirrors StatCard visually but supports
+ * a two-line sublabel and a graceful null/empty-data state.
+ */
+function TimelineMetricCard({
+  label,
+  value,
+  sublabel,
+  sublabel2,
+  icon,
+  accentColor,
+}: TimelineMetricCardProps) {
+  return (
+    <div className="bg-white rounded-2xl p-6 shadow-sm">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-medium text-gray-500 truncate">{label}</p>
+          {value !== null ? (
+            <>
+              <p
+                className="mt-1 text-3xl font-semibold tracking-tight"
+                style={{
+                  color: accentColor,
+                  fontFamily: 'Plus Jakarta Sans, sans-serif',
+                }}
+              >
+                {value}
+              </p>
+              {sublabel && (
+                <p className="mt-1 text-xs text-gray-400">{sublabel}</p>
+              )}
+              {sublabel2 && (
+                <p className="mt-0.5 text-xs text-gray-400">{sublabel2}</p>
+              )}
+            </>
+          ) : (
+            <p
+              className="mt-1 text-sm font-medium"
+              style={{ color: 'var(--color-text-muted)' }}
+            >
+              Not enough data yet
+            </p>
+          )}
+        </div>
+        <div
+          className="flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center"
+          style={{ backgroundColor: `${accentColor}18` }}
+          aria-hidden="true"
+        >
+          <span style={{ color: accentColor }} className="w-5 h-5">
+            {icon}
+          </span>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// TimelineStatsRow — renders the three velocity metric cards
+// ---------------------------------------------------------------------------
+
+interface TimelineStatsRowProps {
+  stats: TimelineStats | undefined
+  isLoading: boolean
+}
+
+function TimelineStatsRow({ stats, isLoading }: TimelineStatsRowProps) {
+  if (isLoading) {
+    return (
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+        <StatCardSkeleton />
+        <StatCardSkeleton />
+        <StatCardSkeleton />
+      </div>
+    )
+  }
+
+  // When the endpoint errored or returned nothing, render cards in null state.
+  const avgResponseDays = stats?.avg_response_days ?? null
+  const interviewRate = stats?.interview_conversion_rate ?? null
+  const interviewDuration = stats?.avg_interview_to_outcome_days ?? null
+  const sampleSizes = stats?.sample_sizes
+
+  const responseValue =
+    avgResponseDays !== null
+      ? `${Math.round(avgResponseDays)} days`
+      : null
+
+  const rateValue =
+    interviewRate !== null
+      ? `${Math.round(interviewRate * 100)}%`
+      : null
+
+  const durationValue =
+    interviewDuration !== null
+      ? `${Math.round(interviewDuration)} days`
+      : null
+
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+      <TimelineMetricCard
+        label="Avg. Response Time"
+        value={responseValue}
+        sublabel={
+          sampleSizes && avgResponseDays !== null
+            ? `based on ${sampleSizes.response_time} application${sampleSizes.response_time === 1 ? '' : 's'}`
+            : undefined
+        }
+        icon={<IconClock />}
+        accentColor="var(--color-primary)"
+      />
+      <TimelineMetricCard
+        label="Interview Rate"
+        value={rateValue}
+        sublabel={
+          interviewRate !== null
+            ? 'of applications reached interview stage'
+            : undefined
+        }
+        sublabel2={
+          sampleSizes && interviewRate !== null
+            ? `based on ${sampleSizes.conversion_rate} application${sampleSizes.conversion_rate === 1 ? '' : 's'}`
+            : undefined
+        }
+        icon={<IconTrendingUp />}
+        accentColor="#8B5CF6"
+      />
+      <TimelineMetricCard
+        label="Avg. Interview Duration"
+        value={durationValue}
+        sublabel={
+          interviewDuration !== null
+            ? 'from interview to outcome'
+            : undefined
+        }
+        sublabel2={
+          sampleSizes && interviewDuration !== null
+            ? `based on ${sampleSizes.interview_to_outcome} application${sampleSizes.interview_to_outcome === 1 ? '' : 's'}`
+            : undefined
+        }
+        icon={<IconCalendar />}
+        accentColor="#F59E0B"
+      />
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
 // DashboardPage
 // ---------------------------------------------------------------------------
 
@@ -203,6 +431,19 @@ export function DashboardPage() {
     queryFn: () => getApplications(),
   })
 
+  // Timeline stats are fetched independently so a failure here cannot crash
+  // the rest of the dashboard. The TimelineStatsRow handles its own null/error state.
+  const {
+    data: timelineStats,
+    isLoading: timelineLoading,
+  } = useQuery({
+    queryKey: ['timeline-stats'],
+    queryFn: () => getTimelineStats(),
+    // On error, TanStack Query will leave `data` as undefined — TimelineStatsRow
+    // renders the "Not enough data yet" null state for all three cards.
+    retry: 1,
+  })
+
   function handleAddApplication() {
     setModalOpen(true)
   }
@@ -214,6 +455,11 @@ export function DashboardPage() {
         <div className="h-7 w-36 bg-gray-200 rounded animate-pulse mb-6" />
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
           <StatCardSkeleton />
+          <StatCardSkeleton />
+          <StatCardSkeleton />
+          <StatCardSkeleton />
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
           <StatCardSkeleton />
           <StatCardSkeleton />
           <StatCardSkeleton />
@@ -310,6 +556,12 @@ export function DashboardPage() {
           accentColor="var(--color-cta)"
         />
       </div>
+
+      {/* Timeline velocity metrics */}
+      <TimelineStatsRow
+        stats={timelineStats}
+        isLoading={timelineLoading}
+      />
 
       {/* Charts row */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
