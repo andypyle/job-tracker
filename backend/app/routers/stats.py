@@ -47,7 +47,8 @@ async def get_timeline_stats(
          the outcome came after the interview started.
 
     All queries are scoped to user_id extracted from the verified JWT.
-    Float results are rounded to 1 decimal place; null when sample size is 0.
+    Day averages are rounded to 1 decimal place and the conversion rate to 3;
+    all are null when sample size is 0.
     """
     admin_client = _get_admin_client()
 
@@ -106,14 +107,32 @@ async def get_timeline_stats(
     # ------------------------------------------------------------------
     # Metric 2: interview_conversion_rate
     #
-    # Count distinct applications with any history row (denominator) and how
-    # many of those ever had new_status = 'Interviewing' (numerator).
+    # Denominator: all of the user's applications (plus any in history).
+    # Numerator: applications that ever had new_status = 'Interviewing' in
+    # history, OR whose current status is Interviewing/Offer. The current-status
+    # check covers applications that progressed before status history existed.
     # ------------------------------------------------------------------
     interview_conversion_rate: Optional[float] = None
     conversion_rate_n: int = 0
     try:
         all_app_ids: set[str] = set()
         interviewed_app_ids: set[str] = set()
+
+        try:
+            current_apps = (
+                admin_client.table("applications")
+                .select("id, status")
+                .eq("user_id", user_id)
+                .execute()
+            ).data or []
+        except Exception:
+            logger.exception("get_timeline_stats: failed to fetch applications for user %s", user_id)
+            current_apps = []
+
+        for app in current_apps:
+            all_app_ids.add(app["id"])
+            if app["status"] in ("Interviewing", "Offer"):
+                interviewed_app_ids.add(app["id"])
 
         for row in all_rows:
             app_id = row["application_id"]
@@ -177,7 +196,8 @@ async def get_timeline_stats(
     return {
         "data": {
             "avg_response_days": _round_or_none(avg_response_days),
-            "interview_conversion_rate": _round_or_none(interview_conversion_rate),
+            # Fraction in [0, 1] — keep 3 decimals so small rates don't round to 0
+            "interview_conversion_rate": _round_or_none(interview_conversion_rate, 3),
             "avg_interview_to_outcome_days": _round_or_none(avg_interview_to_outcome_days),
             "sample_sizes": {
                 "response_time": response_time_n,
