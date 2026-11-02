@@ -25,7 +25,7 @@ const twMerge = extendTailwindMerge({
       shadow: ['overlay'],
       blur: ['backdrop'],
       ease: ['bounce'],
-      animate: ['spinner', 'pulse-opacity', 'slide-in', 'slide-out', 'pop-in'],
+      animate: ['spinner', 'pulse-opacity', 'slide-in', 'slide-out', 'pop-in', 'rise-in'],
     },
   },
 })

@@ -7,7 +7,7 @@ Branch: `design-overhaul`. Design decisions and rules live in the Figma file and
 
 ## Picking this up in a new session
 
-Read this file and CLAUDE.md first. **Next up: ListItem**, then the rest of Phase 1 in order.
+Read this file and CLAUDE.md first. **Next up: Card**, then the rest of Phase 1 in order.
 
 ### Workflow per component
 
@@ -40,7 +40,7 @@ Read this file and CLAUDE.md first. **Next up: ListItem**, then the rest of Phas
 | MobileTopBar | 14:158 | MobileNav | 82:3 |
 | Screens | 4:4 | | |
 
-Done so far: Spinner 81:3, Button and IconButton 14:144, Input 14:145 (PasswordInput is Input plus the trailing slot), Textarea 49:111, Checkbox 39:3, FormField 14:146, Select 34:3, Badge 46:3, DatePicker 36:3, FileDropzone 49:132, Avatar 14:151, Stat 14:153.
+Done so far: Spinner 81:3, Button and IconButton 14:144, Input 14:145 (PasswordInput is Input plus the trailing slot), Textarea 49:111, Checkbox 39:3, FormField 14:146, Select 34:3, Badge 46:3, DatePicker 36:3, FileDropzone 49:132, Avatar 14:151, Stat 14:153, ListItem 48:6.
 
 ### Things learned so far
 
@@ -73,6 +73,11 @@ Done so far: Spinner 81:3, Button and IconButton 14:144, Input 14:145 (PasswordI
 - **Stat** takes `value: number | string`. A number counts up when it changes (`useCountUp` in `src/hooks`: duration/slow read from `--duration-slow`, ease/out through `easeOut` in `src/lib/easing.ts`; reduced motion jumps) and goes through `format` (e.g. ``(n) => `${n}%` ``); a string such as "—" shows as is. The first value doesn't animate; a value arriving after `loading` counts up from 0. Screen readers get the final value from an sr-only copy, not the frames.
 - **Tone rule without a shift:** subtle Stat's 4px top border trades for `pt-4`, so every stat stays 132px as in Figma (strokes there don't affect layout).
 - **Loading Stat** is always the neutral subtle surface (Figma's only loading variant), `aria-busy`, with the label in sr-only text. The skeleton pulses with `animate-pulse-opacity` (opacity only, so it runs under reduced motion too); Figma's is static.
+- **Slot is `children`:** a Figma Slot instance (the dashed "Slot: swap content" box in ListItem, Card, Dialog) is a placeholder, not a component. In React it's `children`, and stories show real content in its place.
+- **ListItem is a composable row**, not a set of text props (title/subtitle/meta hard-coded ApplicationCard's shape). `<ListItem selected? enter?>` is the `<li>` (wrap rows in a `<ul>`) and lays out its children 16px apart: a leading Avatar/Swatch/icon, a `ListItemText` (flex-1 column, Body/Small text/muted by default) holding a `ListItemTitle` (Title/Base) and further lines, then trailing content. Both parts are re-exported from `ListItem.tsx`. A router `<Link>` inside `ListItemTitle` stretches over the row with `::after`, which also draws the focus ring; the row positions links, buttons and inputs (`:where`, so the title link's own `static` wins) so they paint above the overlay. Hover only applies when the title holds a link (`has-[[data-list-item-title]_a]`). On a selected row, give the link `aria-current` yourself. `enter` plays `animate-rise-in` (new token); set it only on rows added after the list rendered. FLIP reordering is the list's job, for the Jobs list in Phase 3/4.
+- **Row height:** Figma's 80px row has 16px padding, but its three text lines (62px) overflow it, so the row is `min-h-20` with `py-2` and centered content: 80px either way.
+- **Deviation:** a selected row's subtitle and meta are text/primary, because text/muted on bg/nav-active is 3.4:1 in Dark mode. Also in Dark mode, avatar/bg and bg/nav-active are both pine-800, so an initials avatar blends into a selected row. Both are worth fixing in Figma.
+- **Testing hover and overlays:** `userEvent.hover` doesn't trigger CSS `:hover` (check the class instead), and `userEvent.click(el)` skips hit testing, so to test what a pointer lands on, click `document.elementFromPoint` at the element's center.
 - **No `any`, no `dark:` variants, no primitives in components.**
 
 ## Decisions
@@ -138,7 +143,7 @@ Display
 - [x] Swatch
 - [x] Avatar (falls back to initials when the image is missing or broken)
 - [x] Stat
-- [ ] ListItem
+- [x] ListItem
 - [ ] Card
 - [ ] DescriptionList, with part Item (`divide-y`, Stacked layout)
 - [ ] Timeline, with part Item (Position Middle | Last; Actor User | System)
