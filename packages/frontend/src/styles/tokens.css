@@ -70,6 +70,9 @@
 
 /* static: emit every token, even ones no utility uses yet, so var(--color-…) always resolves */
 @theme static {
+  /* Drop Tailwind's default palette: only the tokens below generate color utilities */
+  --color-*: initial;
+
   /* Fonts */
   --font-display: "Gabarito", ui-sans-serif, system-ui, sans-serif;
   --font-sans: "Atkinson Hyperlegible Next Variable", ui-sans-serif, system-ui, sans-serif;

@@ -1,4 +1,4 @@
-/* Storybook loads the design system only, without the legacy app styles in src/index.css */
+/* Same as src/index.css, with the source path set from .storybook */
 @import "tailwindcss" source("../src");
 @import "../src/styles/tokens.css";
 @import "../src/styles/base.css";

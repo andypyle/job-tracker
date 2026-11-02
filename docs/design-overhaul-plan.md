@@ -7,7 +7,7 @@ Branch: `design-overhaul`. Design decisions and rules live in the Figma file and
 
 ## Picking this up in a new session
 
-Read this file and CLAUDE.md first. Phases 1 to 4 are done. **Next up: Phase 5** (cleanup).
+Read this file and CLAUDE.md first. Phases 0 to 5 are done; what's left is under "Not designed yet" and the "worth fixing in Figma" notes.
 
 ### Workflow per component
 
@@ -372,19 +372,15 @@ Check each screen against its Figma frame, in light and dark, at 1440 and 390 wi
   - `StatusBadge` and `CompanyAvatar` are now used only by the old `ApplicationCard.tsx`; delete them in Phase 5.
   - Checked against Figma at 1440 (light, dark, Delete dark) and 390 (light, Delete).
 
-## Phase 5: Cleanup
+## Phase 5: Cleanup ✅
 
-- [ ] Delete the old components in `src/components/*.tsx` and the old page code
-- [ ] Remove the legacy block from `index.css` (old tokens, `!important` dark overrides, `.form-input`, modal keyframes). `index.css` should end up as just the Tailwind, `tokens.css` and `base.css` imports
-- [ ] Reset Tailwind's default palette (`--color-*: initial`) so only design tokens generate color utilities
-- [ ] Zero-leftovers check: grep `src/` for anything from the old system and expect no hits:
-  - old variables: `var(--color-primary)`, `--color-background`, `--color-surface`, `--color-text)`, `--color-border)`, `--shadow-sm|md|lg|xl`, `--space-*`, `--z-*`
-  - old palette classes: `teal-`, `slate-`, `gray-`, `red-`, `emerald-`, `blue-`, `bg-white`
-  - `form-input`, `animate-modal-*`, `Plus Jakarta`
-  - `STATUS_COLORS` in `@jobtracker/shared`
-- [ ] Build the app and confirm the emitted CSS has no default Tailwind palette variables (`--color-teal-*`, `--color-slate-*`, and so on)
-- [ ] Remove `recharts`
-- [ ] Update CLAUDE.md and the plop templates for any new conventions
+- [x] Delete the old components in `src/components/*.tsx` and the old page code: ApplicationCard, ApplicationForm, ApplicationModal, ApplicationsChart, CompanyAvatar (and its test), Layout, StatCard, StatusBadge, StatusChart, and `pages/JobsPage.tsx`. `utils/dashboardStats.ts` stays (the Dashboard uses it).
+- [x] Remove the legacy block from `index.css`: it's now just the Tailwind, `tokens.css` and `base.css` imports. Its `:root` also defined `--color-text-muted` with an old slate value, which had been fighting the token of the same name in the app (not in Storybook).
+- [x] Reset Tailwind's default palette (`--color-*: initial` at the top of the `@theme` block)
+- [x] Zero-leftovers check: no hits for the old variables, palette classes, `form-input`, `animate-modal-*`, `Plus Jakarta` or `STATUS_COLORS`. `STATUS_COLORS` and the unused `URL_TO_STATUS` are gone from `@jobtracker/shared`.
+- [x] Build the app: the emitted CSS has no default palette variables. Its only `!important` rules are preflight's `[hidden]` and a `.!visible` that Tailwind picks up from a JS `!visible` expression.
+- [x] Remove `recharts`
+- [x] Update CLAUDE.md: the palette reset, `classes.ts`/`motion.ts`, `STATUS_TONES`, composable vs props, `toast()`, the Screen/Page split, and phone-viewport stories. The plop templates needed no change.
 
 ## Not designed yet (out of scope for this pass)
 

@@ -25,7 +25,9 @@ Env templates are `packages/frontend/.env.example` and `backend/.env.example`. N
 
 ## Styling and tokens
 
-- Tokens live in `packages/frontend/src/styles/tokens.css` and map 1:1 to the Figma variables: `color/bg/canvas` is `--color-bg-canvas`, so the utility is `bg-bg-canvas` (likewise `text-text-muted`, `border-border-subtle`, `bg-tone-info-soft`). Use semantic tokens only; primitives (`--pine-900`, etc.) are deliberately not utilities.
+- Tokens live in `packages/frontend/src/styles/tokens.css` and map 1:1 to the Figma variables: `color/bg/canvas` is `--color-bg-canvas`, so the utility is `bg-bg-canvas` (likewise `text-text-muted`, `border-border-subtle`, `bg-tone-info-soft`). Use semantic tokens only; primitives (`--pine-900`, etc.) are deliberately not utilities. Tailwind's default palette is reset (`--color-*: initial`), so `bg-white`, `text-slate-500` and the like generate nothing.
+- Shared class strings (`focusRing`, `colorTransition`, `fieldFrame`, `popoverSurface`, `popoverMotion`) are in `src/lib/classes.ts`. JS-driven motion reads the tokens through `src/lib/motion.ts` (`readDuration`, `readEasing`, `prefersReducedMotion`).
+- Status colors: spread `STATUS_TONES[status]` (`{ tone, appearance }`, from `@jobtracker/shared`) into `Badge` or `Select`.
 - Semantic colors use `light-dark()`, so dark mode follows `color-scheme`. Never add `dark:` variants or a second set of dark values.
 - Each Figma text style is one utility: `text-heading-h1`, `text-body-small`, `text-label-small`, `text-caption-medium`, and so on. Headings and display styles also need `font-display`.
 - One shadow (`shadow-overlay`), 4px radius by default (`rounded-sm`), no pills. Motion: `ease-bounce` for enters, `ease-in` for exits, durations `duration-(--duration-fast|base|slow)`; reduced motion keeps opacity changes only.
@@ -33,6 +35,7 @@ Env templates are `packages/frontend/.env.example` and `backend/.env.example`. N
 - Icons: `<Icon name="briefcase" />` is static, colored by `currentColor`; add icons to `Icon.paths.ts` from the Figma Icons page. Icons on interactive elements animate: `Button` and `IconButton` do it automatically through `AnimatedIcon` (react-useanimations, one dynamic import per icon). To animate a new icon, add it to `AnimatedIcon.animations.ts` and check its resting frame against the static glyph in the `MatchesStaticIcons` story. Don't animate icons on non-interactive elements.
 - Every story file starts with a `Default` story that shows the component with its default props (the plop template scaffolds one). Name the other stories after what they show.
 - Stories that matter in both modes should include a dark variant with `globals: { theme: 'dark' }`.
+- For layouts that change at a breakpoint, add a story with `globals: { viewport: { value: 'phone' } }` (390×844; `desktop` is 1440×900). It resizes the test browser too, so play functions can check the phone layout.
 
 ## Domain
 
@@ -66,6 +69,12 @@ ComponentName/
 - Put a piece in `parts/` only if no other component needs it. If something else needs it, make it a separate component.
 - Merge class names with `cn()` from `src/lib/cn.ts` (clsx + tailwind-merge), and put the caller's `className` last so it wins.
 - Variant props come from `VariantProps<typeof componentNameVariants>` in the `.types.ts` file.
+- Compose with children and parts (`Card`/`CardHeader`/`CardTitle`) only where the content varies from use to use. Where the design fixes the structure, use props, with `ReactNode` props for slots. A Figma Slot instance maps to `children`.
+- Toasts: call `toast({ tone, title, … })` from `src/lib/toast.ts`. The one `<Toaster />` is in `AppShell`.
+
+## Pages
+
+Each page in `src/pages` exports two things: a presentational `XScreen` that takes data and callbacks as props, and `XPage`, which wires it to queries, mutations and the router. Stories render the Screen under `Screens/…` (inside `AppShell` for app pages). `AppLayout` is the protected route element; pages open the Add dialog with `useAddApplication()`.
 
 ### Scaffolding
 
