@@ -1,0 +1,337 @@
+/*
+ * Design tokens, mapped 1:1 from the Figma variables in
+ * https://www.figma.com/design/ajjKIbesu4oY79EfQIX7Ov/JobTracker
+ *
+ * - Primitives live on :root only, so they don't generate utilities. Use the semantic tokens.
+ * - Semantic colors use light-dark(), so they follow `color-scheme`. The app follows
+ *   prefers-color-scheme; Storybook's theme toolbar sets color-scheme on <html>.
+ * - Figma `color/bg/canvas` is `--color-bg-canvas`, so the utility is `bg-bg-canvas`.
+ */
+
+:root {
+  color-scheme: light dark;
+
+  /* Primitives */
+  --white: #ffffff;
+
+  --pine-50: #f5f8f6;
+  --pine-100: #eef2ef;
+  --pine-200: #dce3df;
+  --pine-300: #c2d0cb;
+  --pine-400: #8fa39d;
+  --pine-500: #647973;
+  --pine-600: #4a5d59;
+  --pine-700: #2e4743;
+  --pine-800: #22504a;
+  --pine-900: #0f3b36;
+  --pine-950: #0b2622;
+  --pine-975: #071a17;
+
+  --chartreuse-100: #edf8cf;
+  --chartreuse-300: #d6f48f;
+  --chartreuse-400: #c8f169;
+  --chartreuse-500: #b2de4c;
+  --chartreuse-550: #b8d483;
+  --chartreuse-600: #a8c66c;
+  --chartreuse-800: #4e6b12;
+  --chartreuse-900: #26330b;
+
+  --coral-100: #ffe4dc;
+  --coral-300: #ffa48c;
+  --coral-400: #ff7a59;
+  --coral-600: #c9471f;
+  --coral-700: #a63a18;
+  --coral-900: #4a1e12;
+
+  --cobalt-100: #e1eafb;
+  --cobalt-300: #8fb1f5;
+  --cobalt-500: #1e5fd9;
+  --cobalt-600: #184db3;
+  --cobalt-900: #122a57;
+
+  --brick-50: #fbeae8;
+  --brick-300: #f0968f;
+  --brick-400: #d9483f;
+  --brick-500: #b3261e;
+  --brick-600: #93201a;
+  --brick-900: #4a1410;
+
+  --overlay-scrim: #071a177a;
+  --overlay-scrim-dark: #0000008f;
+  --overlay-hover-dark: #ffffff14;
+
+  /* Motion durations (no Tailwind namespace; use e.g. `duration-(--duration-base)`) */
+  --duration-fast: 120ms;
+  --duration-base: 200ms;
+  --duration-slow: 280ms;
+  /* Larger surfaces moving a longer way, such as toasts entering and reflowing */
+  --duration-slower: 400ms;
+}
+
+/* static: emit every token, even ones no utility uses yet, so var(--color-…) always resolves */
+@theme static {
+  /* Drop Tailwind's default palette: only the tokens below generate color utilities */
+  --color-*: initial;
+
+  /* Fonts */
+  --font-display: "Gabarito", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Atkinson Hyperlegible Next Variable", ui-sans-serif, system-ui, sans-serif;
+
+  /* Background */
+  --color-bg-canvas: light-dark(var(--pine-100), var(--pine-975));
+  --color-bg-surface: light-dark(var(--white), var(--pine-950));
+  --color-bg-overlay: light-dark(var(--white), var(--pine-900));
+  --color-bg-subtle: light-dark(var(--pine-200), var(--pine-800));
+  --color-bg-skeleton: light-dark(var(--pine-200), var(--pine-800));
+  --color-bg-hover: light-dark(var(--pine-50), var(--overlay-hover-dark));
+  --color-bg-nav-active: light-dark(var(--pine-100), var(--pine-800));
+  --color-bg-band: var(--pine-900);
+  --color-bg-header: light-dark(var(--white), var(--pine-900));
+  --color-bg-scrim: light-dark(var(--overlay-scrim), var(--overlay-scrim-dark));
+
+  /* Text */
+  --color-text-primary: light-dark(var(--pine-900), var(--pine-100));
+  --color-text-muted: light-dark(var(--pine-600), var(--pine-400));
+  --color-text-subtle: var(--pine-500);
+  --color-text-nav-active: light-dark(var(--pine-900), var(--chartreuse-600));
+  --color-text-on-primary: var(--pine-900);
+  --color-text-on-brand: light-dark(var(--white), var(--pine-900));
+  --color-text-on-band: var(--white);
+  --color-text-on-band-muted: var(--pine-300);
+  --color-text-link: light-dark(var(--cobalt-500), var(--cobalt-300));
+
+  /* Border */
+  --color-border-default: light-dark(var(--pine-300), var(--pine-800));
+  --color-border-subtle: light-dark(var(--pine-200), var(--pine-900));
+  --color-border-strong: var(--pine-500);
+  --color-border-focus: light-dark(var(--cobalt-500), var(--chartreuse-600));
+  --color-border-header: light-dark(var(--pine-200), var(--pine-900));
+  --color-border-divider: light-dark(var(--pine-200), var(--pine-600));
+
+  /* Primary (chartreuse) and brand (pine) */
+  --color-primary-default: light-dark(var(--chartreuse-400), var(--chartreuse-600));
+  --color-primary-hover: light-dark(var(--chartreuse-500), var(--chartreuse-550));
+  --color-brand-default: light-dark(var(--pine-900), var(--pine-100));
+  --color-brand-hover: light-dark(var(--pine-800), var(--pine-200));
+  --color-brand-muted: light-dark(var(--pine-600), var(--pine-400));
+
+  /* Accent */
+  --color-accent-coral: var(--coral-400);
+  --color-accent-chartreuse: light-dark(var(--chartreuse-400), var(--chartreuse-600));
+
+  /* Feedback */
+  --color-feedback-error-bg: light-dark(var(--brick-50), var(--brick-900));
+  --color-feedback-error-border: light-dark(var(--brick-300), var(--brick-600));
+  --color-feedback-error-text: light-dark(var(--brick-500), var(--brick-300));
+  --color-feedback-error-strong: light-dark(var(--brick-500), var(--brick-400));
+  --color-feedback-error-hover: var(--brick-600);
+  --color-feedback-danger: var(--brick-500);
+
+  /* Avatar */
+  --color-avatar-bg: light-dark(var(--pine-200), var(--pine-800));
+
+  /* Tone: neutral */
+  --color-tone-neutral-accent: light-dark(var(--pine-600), var(--pine-300));
+  --color-tone-neutral-solid: light-dark(var(--pine-700), var(--pine-300));
+  --color-tone-neutral-on-solid: light-dark(var(--white), var(--pine-950));
+  --color-tone-neutral-soft: light-dark(var(--pine-300), var(--pine-800));
+  --color-tone-neutral-on-soft: light-dark(var(--pine-800), var(--pine-300));
+
+  /* Tone: info */
+  --color-tone-info-accent: light-dark(var(--cobalt-500), var(--cobalt-300));
+  --color-tone-info-solid: var(--cobalt-500);
+  --color-tone-info-on-solid: var(--white);
+  --color-tone-info-soft: light-dark(var(--cobalt-100), var(--cobalt-900));
+  --color-tone-info-on-soft: light-dark(var(--cobalt-600), var(--cobalt-300));
+
+  /* Tone: warning */
+  --color-tone-warning-accent: light-dark(var(--coral-600), var(--coral-400));
+  --color-tone-warning-solid: var(--coral-400);
+  --color-tone-warning-on-solid: var(--pine-900);
+  --color-tone-warning-soft: light-dark(var(--coral-100), var(--coral-900));
+  --color-tone-warning-on-soft: light-dark(var(--coral-700), var(--coral-300));
+
+  /* Tone: positive */
+  --color-tone-positive-accent: light-dark(var(--chartreuse-800), var(--chartreuse-600));
+  --color-tone-positive-solid: light-dark(var(--chartreuse-400), var(--chartreuse-600));
+  --color-tone-positive-on-solid: var(--pine-900);
+  --color-tone-positive-soft: light-dark(var(--chartreuse-100), var(--chartreuse-900));
+  --color-tone-positive-on-soft: light-dark(var(--chartreuse-800), var(--chartreuse-550));
+
+  /* Tone: danger */
+  --color-tone-danger-accent: light-dark(var(--brick-500), var(--brick-300));
+  --color-tone-danger-solid: var(--brick-500);
+  --color-tone-danger-on-solid: var(--white);
+  --color-tone-danger-soft: light-dark(var(--brick-50), var(--brick-900));
+  --color-tone-danger-on-soft: light-dark(var(--brick-500), var(--brick-300));
+
+  /* Chart */
+  --color-chart-single: light-dark(var(--pine-900), var(--chartreuse-600));
+  --color-chart-series-1: light-dark(var(--cobalt-500), var(--cobalt-300));
+  --color-chart-series-2: var(--coral-400);
+  --color-chart-series-3: light-dark(var(--chartreuse-400), var(--chartreuse-600));
+  --color-chart-series-4: light-dark(var(--brick-500), var(--brick-400));
+  --color-chart-series-5: light-dark(var(--pine-400), var(--pine-500));
+  --color-chart-grid: light-dark(var(--pine-200), var(--pine-800));
+
+  /* Radius (same values as Tailwind's defaults, restated so they match Figma explicitly) */
+  --radius-xs: 0.125rem;
+  --radius-sm: 0.25rem;
+  --radius-md: 0.375rem;
+  --radius-lg: 0.5rem;
+  --radius-xl: 0.75rem;
+  --radius-2xl: 1rem;
+
+  /* Spacing: Tailwind's --spacing (0.25rem) already gives spacing/N = N × 4px */
+
+  /* Effects */
+  --shadow-overlay: 0 2px 4px 0 #071a171a, 0 16px 40px -8px #071a1729;
+  --blur-backdrop: 4px; /* Figma Blur/backdrop radius 8 = CSS blur(4px) */
+
+  /* Easing */
+  --ease-bounce: cubic-bezier(0.34, 1.36, 0.64, 1);
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ease-in: cubic-bezier(0.4, 0, 1, 1);
+  /* A damped spring (ζ 0.42): overshoots about 23% of the distance, dips back and settles.
+     For short moves where ease/bounce's overshoot is too small to see (the MobileNav panel's
+     0.92 to 1 scale). Figma's ease/spring. Pair with duration/slower so the settle has room. */
+  --ease-spring: linear(
+    0, 0.051, 0.183, 0.363, 0.561, 0.753, 0.922, 1.057, 1.153, 1.21, 1.233, 1.227, 1.2, 1.16,
+    1.115, 1.069, 1.028, 0.994, 0.969, 0.953, 0.946, 0.946, 0.951, 0.96, 0.97, 0.981, 0.991, 1,
+    1.006, 1.01, 1.012, 1.013, 1.012, 1.01, 1.008, 1.005, 1.003, 1.001, 0.999, 0.998, 1
+  );
+
+  /* Waiting states: one calm loop. The pulse is the reduced-motion fallback. */
+  --animate-spinner: spin 800ms linear infinite;
+  --animate-pulse-opacity: pulse-opacity 1.2s ease-in-out infinite alternate;
+
+  @keyframes pulse-opacity {
+    from {
+      opacity: 0.5;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  /* Calendar month change: slides --slide (±12px, 0 for reduced motion) with a cross-fade.
+     In over duration/base with ease/bounce; out over duration/fast with ease/in. */
+  --animate-slide-in: slide-in var(--duration-base) var(--ease-bounce) both;
+  --animate-slide-out: slide-out var(--duration-fast) var(--ease-in) both;
+  /* Something appearing with a small pop, over duration/base with ease/bounce. Starts at
+     --pop-from: 0.85 by default (a selected fill); FileDropzone's status icons use 0.9. */
+  --animate-pop-in: pop-in var(--duration-base) var(--ease-bounce) both;
+  /* A new row rising into place (ListItem): from --rise below (8px, 0 for reduced motion) with
+     a fade, over duration/base with ease/bounce. */
+  --animate-rise-in: rise-in var(--duration-base) var(--ease-bounce) both;
+  /* A message dropping into place (Alert): from --drop above (-4px, 0 for reduced motion) with a
+     fade, over duration/base with ease/out. No bounce: it's reporting a problem. */
+  --animate-drop-in: drop-in var(--duration-base) var(--ease-out) both;
+  /* Chart bars growing from the baseline over duration/slow with ease/bounce. Set
+     transform-origin to the bottom; BarChart staggers them 30ms apart. */
+  --animate-grow-up: grow-up var(--duration-slow) var(--ease-bounce) both;
+  /* A donut sweeping in clockwise over 600ms with ease/out, on a stroke with pathLength 360 and
+     stroke-dasharray "360 360" */
+  --animate-sweep: sweep 600ms var(--ease-out) both;
+
+  @keyframes slide-in {
+    from {
+      opacity: 0;
+      translate: var(--slide, 0) 0;
+    }
+  }
+  @keyframes slide-out {
+    to {
+      opacity: 0;
+      translate: calc(var(--slide, 0) * -1) 0;
+    }
+  }
+  @keyframes rise-in {
+    from {
+      opacity: 0;
+      translate: 0 var(--rise, 8px);
+    }
+  }
+  @keyframes drop-in {
+    from {
+      opacity: 0;
+      translate: 0 var(--drop, -4px);
+    }
+  }
+  @keyframes grow-up {
+    from {
+      scale: 1 0;
+    }
+  }
+  @keyframes sweep {
+    from {
+      stroke-dashoffset: 360;
+    }
+  }
+  @keyframes pop-in {
+    from {
+      scale: var(--pop-from, 0.85);
+    }
+  }
+
+  /* Text styles: one utility per Figma text style. Headings also need `font-display`. */
+  --text-display-hero: 3.75rem;
+  --text-display-hero--line-height: 4rem;
+  --text-display-hero--letter-spacing: -0.015em;
+  --text-display-hero--font-weight: 700;
+
+  --text-display-stat: 3rem;
+  --text-display-stat--line-height: 3rem;
+  --text-display-stat--letter-spacing: -0.01em;
+  --text-display-stat--font-weight: 700;
+
+  --text-heading-h1: 2.25rem;
+  --text-heading-h1--line-height: 2.5rem;
+  --text-heading-h1--letter-spacing: -0.01em;
+  --text-heading-h1--font-weight: 700;
+
+  --text-heading-h2: 1.5rem;
+  --text-heading-h2--line-height: 2rem;
+  --text-heading-h2--letter-spacing: -0.005em;
+  --text-heading-h2--font-weight: 700;
+
+  --text-heading-h3: 1.25rem;
+  --text-heading-h3--line-height: 1.75rem;
+  --text-heading-h3--font-weight: 700;
+
+  --text-body-large: 1.125rem;
+  --text-body-large--line-height: 1.75rem;
+  --text-body-large--font-weight: 400;
+
+  --text-body-base: 1rem;
+  --text-body-base--line-height: 1.5rem;
+  --text-body-base--font-weight: 400;
+
+  --text-body-small: 0.875rem;
+  --text-body-small--line-height: 1.25rem;
+  --text-body-small--font-weight: 400;
+
+  --text-title-base: 1rem;
+  --text-title-base--line-height: 1.375rem;
+  --text-title-base--font-weight: 600;
+
+  --text-label-base: 1rem;
+  --text-label-base--line-height: 1.25rem;
+  --text-label-base--font-weight: 600;
+
+  --text-label-small: 0.875rem;
+  --text-label-small--line-height: 1.25rem;
+  --text-label-small--font-weight: 500;
+
+  --text-caption-regular: 0.75rem;
+  --text-caption-regular--line-height: 1rem;
+  --text-caption-regular--font-weight: 400;
+
+  --text-caption-medium: 0.75rem;
+  --text-caption-medium--line-height: 1rem;
+  --text-caption-medium--font-weight: 500;
+
+  --text-caption-bold: 0.75rem;
+  --text-caption-bold--line-height: 1rem;
+  --text-caption-bold--font-weight: 700;
+}

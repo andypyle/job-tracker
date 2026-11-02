@@ -27,7 +27,8 @@ class ApplicationBase(BaseModel):
 
 
 class ApplicationCreate(ApplicationBase):
-    pass
+    # Lets a role be logged at a later stage (say, already Interviewing)
+    status: ApplicationStatus = ApplicationStatus.Applied
 
 
 class ApplicationUpdate(BaseModel):

@@ -1,297 +1,202 @@
-import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { useEffect, useRef, useState } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { z } from 'zod'
+import { Alert } from '../components/Alert/Alert'
+import { AuthLayout } from '../components/AuthLayout/AuthLayout'
+import { Button } from '../components/Button/Button'
+import { buttonVariants } from '../components/Button/Button.variants'
+import { FormField } from '../components/FormField/FormField'
+import { Input } from '../components/Input/Input'
+import { PasswordInput } from '../components/PasswordInput/PasswordInput'
+import { focusRing } from '../lib/classes'
+import { cn } from '../lib/cn'
 import { useAuth } from '../hooks/useAuth'
 
-interface RegisterFormValues {
-  email: string
-  password: string
-  confirmPassword: string
+export const MIN_PASSWORD_LENGTH = 8
+
+// zod 3 skips an object's refinements while any of its fields fails, so both password rules
+// live in one superRefine over plain strings: the mismatch shows even while the name is empty
+const passwords = z
+  .object({ password: z.string(), confirmPassword: z.string() })
+  .superRefine(({ password, confirmPassword }, ctx) => {
+    if (password.length === 0) {
+      ctx.addIssue({ code: 'custom', path: ['password'], message: 'Enter a password' })
+    } else if (password.length < MIN_PASSWORD_LENGTH) {
+      ctx.addIssue({ code: 'custom', path: ['password'], message: `Use at least ${MIN_PASSWORD_LENGTH} characters.` })
+    }
+    if (confirmPassword.length === 0) {
+      ctx.addIssue({ code: 'custom', path: ['confirmPassword'], message: 'Enter your password again' })
+    } else if (confirmPassword !== password) {
+      ctx.addIssue({ code: 'custom', path: ['confirmPassword'], message: 'Passwords don’t match.' })
+    }
+  })
+
+const schema = z
+  .object({
+    name: z.string().trim().min(1, 'Enter your name'),
+    email: z.string().trim().min(1, 'Enter your email').email('Enter an email like name@example.com'),
+  })
+  .and(passwords)
+
+type SignUpValues = z.infer<typeof schema>
+
+/**
+ * What a sign-up came to. `signed-in` needs nothing from the screen (the page navigates);
+ * `check-email` means Supabase sent a confirmation link; `email-taken` marks the email field.
+ */
+export type SignUpResult = 'signed-in' | 'check-email' | 'email-taken'
+
+export interface SignUpScreenProps {
+  /** Creates the account, or throws an Error whose message the screen shows above the fields */
+  onSignUp: (name: string, email: string, password: string) => Promise<SignUpResult>
 }
 
-function Spinner() {
+const emailTaken = 'There’s already an account with this email. Sign in instead?'
+
+/**
+ * The Sign up screen without the auth wiring. Fields show errors on blur or submit, and
+ * submitting moves focus to the first invalid one. An email that's already registered is a
+ * field error; any other failure is one danger Alert, which takes focus.
+ */
+export function SignUpScreen({ onSignUp }: SignUpScreenProps) {
+  const {
+    register,
+    handleSubmit,
+    setError,
+    trigger,
+    getFieldState,
+    formState: { errors, isSubmitting, isSubmitted },
+  } = useForm<SignUpValues>({
+    resolver: zodResolver(schema),
+    mode: 'onTouched',
+    defaultValues: { name: '', email: '', password: '', confirmPassword: '' },
+  })
+
+  const [submitError, setSubmitError] = useState<{ message: string } | null>(null)
+  const [sentTo, setSentTo] = useState<string | null>(null)
+  const alertRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (submitError) alertRef.current?.focus()
+  }, [submitError])
+
+  const submit = handleSubmit(async ({ name, email, password }) => {
+    setSubmitError(null)
+    try {
+      const result = await onSignUp(name, email, password)
+      if (result === 'email-taken') setError('email', { message: emailTaken }, { shouldFocus: true })
+      if (result === 'check-email') setSentTo(email)
+    } catch (error) {
+      // A new object each time, so the same message focuses the alert again
+      setSubmitError({ message: error instanceof Error ? error.message : 'Something went wrong. Try again.' })
+    }
+  })
+
+  if (sentTo) return <CheckEmail email={sentTo} />
+
   return (
-    <svg
-      className="animate-spin w-4 h-4"
-      xmlns="http://www.w3.org/2000/svg"
-      fill="none"
-      viewBox="0 0 24 24"
-      aria-hidden="true"
-    >
-      <circle
-        className="opacity-25"
-        cx="12"
-        cy="12"
-        r="10"
-        stroke="currentColor"
-        strokeWidth="4"
-      />
-      <path
-        className="opacity-75"
-        fill="currentColor"
-        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
-      />
-    </svg>
+    <AuthLayout>
+      <form noValidate onSubmit={submit} className="flex flex-col gap-6">
+        <div className="flex flex-col gap-1.5">
+          <h1 className="font-display text-heading-h2 text-text-primary lg:text-heading-h1">Create your account</h1>
+          <p className="text-body-base text-text-muted">A few details and you’re in.</p>
+        </div>
+
+        {submitError && (
+          <Alert ref={alertRef} tone="danger">
+            {submitError.message}
+          </Alert>
+        )}
+
+        <FormField label="Name" error={errors.name?.message}>
+          <Input {...register('name')} autoComplete="name" />
+        </FormField>
+        <FormField label="Email" error={errors.email?.message}>
+          <Input {...register('email')} type="email" autoComplete="email" inputMode="email" />
+        </FormField>
+        <FormField
+          label="Password"
+          hint={`Use at least ${MIN_PASSWORD_LENGTH} characters.`}
+          error={errors.password?.message}
+        >
+          <PasswordInput
+            {...register('password', {
+              // Keep the match check current once the confirm field is showing its state
+              onChange: () => {
+                if (isSubmitted || getFieldState('confirmPassword').isTouched) void trigger('confirmPassword')
+              },
+            })}
+            autoComplete="new-password"
+          />
+        </FormField>
+        <FormField label="Confirm password" error={errors.confirmPassword?.message}>
+          <PasswordInput {...register('confirmPassword')} autoComplete="new-password" />
+        </FormField>
+
+        <Button type="submit" variant="primary" disabled={isSubmitting} className="w-full">
+          {isSubmitting ? 'Creating account…' : 'Create account'}
+        </Button>
+
+        <p className="flex flex-wrap justify-center gap-x-1 text-body-small text-text-muted">
+          Already have an account?
+          <Link to="/login" className={cn('rounded-sm text-label-small text-text-link underline', focusRing)}>
+            Sign in
+          </Link>
+        </p>
+      </form>
+    </AuthLayout>
+  )
+}
+
+/** Shown when Supabase wants the email confirmed before the first sign-in (Figma: Sign up, check your email) */
+function CheckEmail({ email }: { email: string }) {
+  const headingRef = useRef<HTMLHeadingElement>(null)
+  // The form is gone, so focus would fall to the body; start screen readers at the new heading
+  useEffect(() => headingRef.current?.focus(), [])
+
+  return (
+    <AuthLayout>
+      <div className="flex flex-col gap-6">
+        <div className="flex flex-col gap-1.5">
+          <h1
+            ref={headingRef}
+            tabIndex={-1}
+            className="font-display text-heading-h2 text-text-primary outline-none lg:text-heading-h1"
+          >
+            Check your email
+          </h1>
+          <p className="text-body-base text-text-muted">
+            We sent a link to <span className="font-semibold text-text-primary">{email}</span>. Open it to finish
+            setting up your account, then sign in.
+          </p>
+        </div>
+        <Link to="/login" className={cn(buttonVariants({ variant: 'primary' }), 'w-full')}>
+          Go to sign in
+        </Link>
+      </div>
+    </AuthLayout>
   )
 }
 
 export function RegisterPage() {
   const { signUp } = useAuth()
-  const [serverError, setServerError] = useState<string | null>(null)
-  const [success, setSuccess] = useState(false)
-
-  const {
-    register,
-    handleSubmit,
-    watch,
-    formState: { errors, isSubmitting },
-  } = useForm<RegisterFormValues>()
-
-  const passwordValue = watch('password')
-
-  const onSubmit = async (values: RegisterFormValues) => {
-    setServerError(null)
-    const { error } = await signUp(values.email, values.password)
-    if (error) {
-      setServerError(error.message)
-      return
-    }
-    setSuccess(true)
-  }
-
-  if (success) {
-    return (
-      <div
-        className="min-h-screen flex items-center justify-center px-4 py-12"
-        style={{ backgroundColor: 'var(--color-background)' }}
-      >
-        <div className="w-full max-w-sm text-center">
-          <div
-            className="inline-flex items-center justify-center w-14 h-14 rounded-full mb-5"
-            style={{ backgroundColor: '#D1FAE5' }}
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="#059669"
-              strokeWidth={2.5}
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className="w-7 h-7"
-              aria-hidden="true"
-            >
-              <polyline points="20 6 9 17 4 12" />
-            </svg>
-          </div>
-          <h2
-            className="text-xl font-semibold mb-2"
-            style={{ color: 'var(--color-text)' }}
-          >
-            Check your email
-          </h2>
-          <p
-            className="text-sm mb-6"
-            style={{ color: 'var(--color-text-muted)' }}
-          >
-            We sent you a confirmation link. Click it to activate your account,
-            then return here to sign in.
-          </p>
-          <Link
-            to="/login"
-            className="inline-flex items-center justify-center px-5 py-2.5 rounded-lg text-sm font-semibold text-white transition-colors duration-150 cursor-pointer"
-            style={{ backgroundColor: 'var(--color-primary)' }}
-            onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'var(--color-primary-hover)')}
-            onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'var(--color-primary)')}
-          >
-            Go to sign in
-          </Link>
-        </div>
-      </div>
-    )
-  }
+  const navigate = useNavigate()
 
   return (
-    <div
-      className="min-h-screen flex items-center justify-center px-4 py-12"
-      style={{ backgroundColor: 'var(--color-background)' }}
-    >
-      <div className="w-full max-w-sm">
-        {/* App brand */}
-        <div className="text-center mb-8">
-          <div
-            className="inline-flex items-center justify-center w-12 h-12 rounded-xl mb-4"
-            style={{ backgroundColor: 'var(--color-primary)' }}
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="white"
-              strokeWidth={2.5}
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className="w-6 h-6"
-              aria-hidden="true"
-            >
-              <rect x="2" y="7" width="20" height="14" rx="2" ry="2" />
-              <path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2" />
-            </svg>
-          </div>
-          <h1
-            className="text-2xl font-semibold"
-            style={{ color: 'var(--color-text)' }}
-          >
-            Create your account
-          </h1>
-          <p
-            className="mt-1 text-sm"
-            style={{ color: 'var(--color-text-muted)' }}
-          >
-            Start tracking your job applications today
-          </p>
-        </div>
-
-        {/* Card */}
-        <div
-          className="bg-white rounded-2xl p-8"
-          style={{ boxShadow: 'var(--shadow-md)' }}
-        >
-          {serverError && (
-            <div
-              className="mb-5 px-4 py-3 rounded-lg bg-red-50 border border-red-100 text-sm text-red-600"
-              role="alert"
-            >
-              {serverError}
-            </div>
-          )}
-
-          <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-5">
-            {/* Email */}
-            <div>
-              <label
-                htmlFor="register-email"
-                className="block text-sm font-medium mb-1.5"
-                style={{ color: 'var(--color-text)' }}
-              >
-                Email address
-              </label>
-              <input
-                id="register-email"
-                type="email"
-                autoComplete="email"
-                className={`form-input${errors.email ? ' is-error' : ''}`}
-                {...register('email', {
-                  required: 'Email is required',
-                  pattern: {
-                    value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
-                    message: 'Enter a valid email address',
-                  },
-                })}
-              />
-              {errors.email && (
-                <p className="mt-1.5 text-xs text-red-500" role="alert">
-                  {errors.email.message}
-                </p>
-              )}
-            </div>
-
-            {/* Password */}
-            <div>
-              <label
-                htmlFor="register-password"
-                className="block text-sm font-medium mb-1.5"
-                style={{ color: 'var(--color-text)' }}
-              >
-                Password
-              </label>
-              <input
-                id="register-password"
-                type="password"
-                autoComplete="new-password"
-                className={`form-input${errors.password ? ' is-error' : ''}`}
-                {...register('password', {
-                  required: 'Password is required',
-                  minLength: {
-                    value: 8,
-                    message: 'Password must be at least 8 characters',
-                  },
-                })}
-              />
-              {errors.password && (
-                <p className="mt-1.5 text-xs text-red-500" role="alert">
-                  {errors.password.message}
-                </p>
-              )}
-            </div>
-
-            {/* Confirm password */}
-            <div>
-              <label
-                htmlFor="register-confirm-password"
-                className="block text-sm font-medium mb-1.5"
-                style={{ color: 'var(--color-text)' }}
-              >
-                Confirm password
-              </label>
-              <input
-                id="register-confirm-password"
-                type="password"
-                autoComplete="new-password"
-                className={`form-input${errors.confirmPassword ? ' is-error' : ''}`}
-                {...register('confirmPassword', {
-                  required: 'Please confirm your password',
-                  validate: (value) =>
-                    value === passwordValue || 'Passwords do not match',
-                })}
-              />
-              {errors.confirmPassword && (
-                <p className="mt-1.5 text-xs text-red-500" role="alert">
-                  {errors.confirmPassword.message}
-                </p>
-              )}
-            </div>
-
-            {/* Submit */}
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="flex items-center justify-center gap-2 w-full py-3 px-4 rounded-lg text-white text-sm font-semibold transition-colors duration-150 cursor-pointer disabled:cursor-not-allowed disabled:opacity-70 mt-2"
-              style={{ backgroundColor: isSubmitting ? 'var(--color-cta-hover)' : 'var(--color-cta)' }}
-              onMouseEnter={(e) => {
-                if (!isSubmitting) {
-                  e.currentTarget.style.backgroundColor = 'var(--color-cta-hover)'
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (!isSubmitting) {
-                  e.currentTarget.style.backgroundColor = 'var(--color-cta)'
-                }
-              }}
-            >
-              {isSubmitting && <Spinner />}
-              {isSubmitting ? 'Creating account...' : 'Create account'}
-            </button>
-          </form>
-        </div>
-
-        {/* Login link */}
-        <p
-          className="mt-6 text-center text-sm"
-          style={{ color: 'var(--color-text-muted)' }}
-        >
-          Already have an account?{' '}
-          <Link
-            to="/login"
-            className="font-medium transition-colors duration-150"
-            style={{ color: 'var(--color-primary)' }}
-            onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--color-primary-hover)')}
-            onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--color-primary)')}
-          >
-            Sign in
-          </Link>
-        </p>
-      </div>
-    </div>
+    <SignUpScreen
+      onSignUp={async (name, email, password) => {
+        const { user, session, error } = await signUp(name, email, password)
+        if (error?.code === 'user_already_exists' || error?.code === 'email_exists') return 'email-taken'
+        if (error) throw new Error(error.message)
+        // With email confirmation on, Supabase answers a taken email with a user that has no identities
+        if (user?.identities?.length === 0) return 'email-taken'
+        if (session) {
+          navigate('/')
+          return 'signed-in'
+        }
+        return 'check-email'
+      }}
+    />
   )
 }

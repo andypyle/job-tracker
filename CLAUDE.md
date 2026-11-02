@@ -1,240 +1,108 @@
-# CLAUDE.md — Job Application Tracker
+# CLAUDE.md
 
-This file is the primary reference for Claude Code working in this codebase. Read it before making any changes. Subagents should also read their own `agents/AGENT_*.md` file.
+**Git:** never attribute work to Claude in commit messages or PR descriptions — no `Co-Authored-By: Claude`, no "Generated with Claude Code" lines.
 
----
+Job application tracker. pnpm monorepo: React frontend in `packages/frontend`, shared TS types in `packages/shared` (`@jobtracker/shared`), Python FastAPI backend in `backend/` (not a pnpm workspace member).
 
-## What This Project Is
+## Running locally
 
-A full-stack web app for tracking job applications. Users log in, add applications with file uploads, track status changes, and view dashboard analytics. See `PRODUCT.md` for the full product spec.
-
----
-
-## Monorepo Structure
-
-```
-/
-├── packages/
-│   ├── frontend/               # React 18 + Vite + TailwindCSS v4
-│   │   ├── src/
-│   │   │   ├── components/     # Reusable UI components
-│   │   │   ├── pages/          # Route-level page components
-│   │   │   ├── hooks/          # Custom React hooks
-│   │   │   ├── lib/            # API client, Supabase client, utilities
-│   │   │   └── types/          # Local types (re-exports from shared)
-│   │   ├── index.html
-│   │   └── vite.config.ts
-│   │
-│   └── shared/                 # Shared TypeScript types and constants
-│       └── src/
-│           ├── types.ts         # ApplicationStatus, Application, etc.
-│           └── constants.ts     # STATUS_COLORS, STATUS_LABELS, etc.
-│
-├── backend/                    # Python FastAPI — not a pnpm workspace member
-│   ├── app/
-│   │   ├── main.py
-│   │   ├── config.py
-│   │   ├── dependencies.py     # JWT auth dependency
-│   │   ├── routers/            # Route handlers
-│   │   ├── models/             # Pydantic models
-│   │   └── services/           # opengraph.py, scheduler.py, storage.py
-│   ├── requirements.txt
-│   └── Dockerfile
-│
-├── supabase/
-│   └── migrations/
-│
-├── .taskmaster/                # TaskMaster AI — do not edit manually
-│   └── docs/
-│       └── prd.txt             # Plain-text PRD for TaskMaster to parse
-│
-├── agents/
-│   ├── AGENT_PM.md
-│   ├── AGENT_BACKEND.md
-│   ├── AGENT_FRONTEND.md
-│   └── AGENT_TESTING.md
-│
-├── package.json                # pnpm workspace root
-├── pnpm-workspace.yaml
-├── CLAUDE.md
-├── PRODUCT.md
-└── railway.toml
-```
-
-### pnpm workspace
-
-`pnpm-workspace.yaml`:
-```yaml
-packages:
-  - 'packages/*'
-```
-
-`backend/` is a sibling directory, not a workspace member. It is self-contained with its own `requirements.txt` and `Dockerfile`.
-
----
-
-## Environment Variables
-
-### Backend (`backend/.env`)
-```
-SUPABASE_URL=
-SUPABASE_ANON_KEY=
-SUPABASE_SERVICE_ROLE_KEY=
-FRONTEND_URL=http://localhost:5173
-```
-
-### Frontend (`packages/frontend/.env`)
-```
-VITE_SUPABASE_URL=
-VITE_SUPABASE_ANON_KEY=
-VITE_API_BASE_URL=http://localhost:8000
-```
-
-Never commit `.env` files. Use `.env.example` as the template.
-
----
-
-## Running Locally
-
-### Backend
 ```bash
-cd backend
-python -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-uvicorn app.main:app --reload --port 8000
+pnpm install && pnpm --filter frontend dev     # frontend on :5173
+cd backend && source .venv/bin/activate && uvicorn app.main:app --reload --port 8000
 ```
 
-### Frontend + Shared
+Env templates are `packages/frontend/.env.example` and `backend/.env.example`. Never commit `.env` files.
+
+## Architecture rules
+
+- **Data flow:** the frontend uses Supabase **only for auth** (`src/lib/supabase.ts`). All data goes through the FastAPI backend via the functions in `src/lib/api.ts`, which attaches the Supabase JWT. Never call `fetch`/axios or query Supabase tables directly from components.
+- **Never expose `SUPABASE_SERVICE_ROLE_KEY`** to the frontend. Only `VITE_`-prefixed vars reach the browser.
+- **Backend responses** use the envelope `{ data, error }`. `api.ts` unwraps it, so components only see data or a thrown error.
+- **Shared types:** `Application`, `ApplicationStatus`, `ApplicationCreate`, `ApplicationUpdate`, etc. come from `@jobtracker/shared`; never redefine them in the frontend. The backend keeps its own Pydantic equivalents and doesn't import from `shared`, so a type change there needs a matching backend change.
+- **Server state** via TanStack Query; **forms** via React Hook Form + zod.
+- **TypeScript:** no `any` without a comment explaining why.
+- **Dark mode:** follow `prefers-color-scheme` with CSS custom properties. There is no theme toggle.
+
+## Styling and tokens
+
+- Tokens live in `packages/frontend/src/styles/tokens.css` and map 1:1 to the Figma variables: `color/bg/canvas` is `--color-bg-canvas`, so the utility is `bg-bg-canvas` (likewise `text-text-muted`, `border-border-subtle`, `bg-tone-info-soft`). Use semantic tokens only; primitives (`--pine-900`, etc.) are deliberately not utilities. Tailwind's default palette is reset (`--color-*: initial`), so `bg-white`, `text-slate-500` and the like generate nothing.
+- Shared class strings (`focusRing`, `colorTransition`, `fieldFrame`, `popoverSurface`, `popoverMotion`) are in `src/lib/classes.ts`. JS-driven motion reads the tokens through `src/lib/motion.ts` (`readDuration`, `readEasing`, `prefersReducedMotion`).
+- Status colors: spread `STATUS_TONES[status]` (`{ tone, appearance }`, from `@jobtracker/shared`) into `Badge` or `Select`.
+- Semantic colors use `light-dark()`, so dark mode follows `color-scheme`. Never add `dark:` variants or a second set of dark values.
+- Each Figma text style is one utility: `text-heading-h1`, `text-body-small`, `text-label-small`, `text-caption-medium`, and so on. Headings and display styles also need `font-display`.
+- One shadow (`shadow-overlay`), 4px radius by default (`rounded-sm`), no pills. Motion: `ease-bounce` for enters, `ease-in` for exits, durations `duration-(--duration-fast|base|slow)`; reduced motion keeps opacity changes only.
+- New custom theme keys must also be registered in `src/lib/cn.ts`, or tailwind-merge may drop them.
+- Icons: `<Icon name="briefcase" />` is static, colored by `currentColor`; add icons to `Icon.paths.ts` from the Figma Icons page. Icons on interactive elements animate: `Button` and `IconButton` do it automatically through `AnimatedIcon` (react-useanimations, one dynamic import per icon). To animate a new icon, add it to `AnimatedIcon.animations.ts` and check its resting frame against the static glyph in the `MatchesStaticIcons` story. Don't animate icons on non-interactive elements.
+- Every story file starts with a `Default` story that shows the component with its default props (the plop template scaffolds one). Name the other stories after what they show.
+- Stories that matter in both modes should include a dark variant with `globals: { theme: 'dark' }`.
+- For layouts that change at a breakpoint, add a story with `globals: { viewport: { value: 'phone' } }` (390×844; `desktop` is 1440×900). It resizes the test browser too, so play functions can check the phone layout.
+
+## Domain
+
+Statuses and how they change:
+
+```
+Applied (default) → Interviewing → Offer | Rejected | Role Eliminated   (manual)
+Applied → Unlikely                                                      (automatic after 14 days in Applied, nightly job)
+```
+
+Users can attach PDF résumé and cover-letter uploads (max 10MB, PDF only). Download links are signed URLs that expire after 1 hour, so don't cache them long-term in the UI.
+
+Company logos come from OpenGraph scraping and may be missing or broken. The UI must always fall back to an initials avatar.
+
+**Out of scope for v1:** CSV export, team/shared features.
+
+## Frontend components
+
+Components live in `packages/frontend/src/components`, one folder per component:
+
+```
+ComponentName/
+├── ComponentName.tsx           # the component
+├── ComponentName.types.ts      # props interface (ComponentNameProps)
+├── ComponentName.stories.tsx   # Storybook stories, with play functions for interactions
+├── ComponentName.variants.ts   # optional: cva() variants (class-variance-authority)
+└── parts/                      # optional: pieces used only by this component
+    └── PartName/               # same file layout as a component; stories optional
+```
+
+- Put a piece in `parts/` only if no other component needs it. If something else needs it, make it a separate component.
+- Merge class names with `cn()` from `src/lib/cn.ts` (clsx + tailwind-merge), and put the caller's `className` last so it wins.
+- Variant props come from `VariantProps<typeof componentNameVariants>` in the `.types.ts` file.
+- Compose with children and parts (`Card`/`CardHeader`/`CardTitle`) only where the content varies from use to use. Where the design fixes the structure, use props, with `ReactNode` props for slots. A Figma Slot instance maps to `children`.
+- Toasts: call `toast({ tone, title, … })` from `src/lib/toast.ts`. The one `<Toaster />` is in `AppShell`.
+
+## Pages
+
+Each page in `src/pages` exports two things: a presentational `XScreen` that takes data and callbacks as props, and `XPage`, which wires it to queries, mutations and the router. Stories render the Screen under `Screens/…` (inside `AppShell` for app pages). `AppLayout` is the protected route element; pages open the Add dialog with `useAddApplication()`.
+
+### Scaffolding
+
+Always scaffold with plop; don't create these files by hand. The interactive prompts don't work in a non-TTY shell, so pass the answers as positional arguments from the repo root:
+
 ```bash
-pnpm install          # from repo root
-pnpm --filter frontend dev
+# component: <name> <withVariants> <storybookFolder>
+pnpm --filter frontend generate:component ApplicationCard true Patterns
+
+# part: <parentComponent> <name> <withVariants> <withStories>
+pnpm --filter frontend generate:part ApplicationCard card-header false false
 ```
 
----
+Names can be given in any case; they're converted to PascalCase. The part generator only accepts a parent folder that contains a matching `Name/Name.tsx`.
 
-## TaskMaster Setup
+Storybook folders: generic building blocks go under `Components/` by kind (`Actions`, `Forms`, `Data display`, `Feedback`, `Overlays`, `Navigation`, `Icons`; quote `"Components/Data display"` on the command line). App-specific pieces go in `Patterns`, page frames in `Layouts`, and page Screens in `Screens`, matching the Figma file's split. A part's stories sit under its parent's (`…/Select/Parts/Option`). The folder list is `STORY_GROUPS` in the plopfile; keep it in step with `storySort` in `.storybook/preview.tsx`. The plopfile is `packages/frontend/plopfile.js`, and the templates are in `packages/frontend/plop-templates/component/`. If you change the conventions above, update the templates too.
 
-TaskMaster runs as an MCP server in Claude Code. No separate API key is required when using Claude Code's built-in OAuth.
+## Storybook and tests
 
-Add to `.claude/mcp.json` (project-scoped):
-```json
-{
-  "mcpServers": {
-    "task-master-ai": {
-      "command": "npx",
-      "args": ["-y", "task-master-ai"],
-      "env": {
-        "MODEL": "claude-code"
-      }
-    }
-  }
-}
-```
+Run these from `packages/frontend`:
 
-Configure `.taskmaster/config.json`:
-```json
-{
-  "models": {
-    "main": { "provider": "claude-code", "modelId": "sonnet", "maxTokens": 64000 },
-    "research": { "provider": "claude-code", "modelId": "opus", "maxTokens": 32000 },
-    "fallback": { "provider": "claude-code", "modelId": "sonnet", "maxTokens": 64000 }
-  }
-}
-```
+| Command | What it does |
+| --- | --- |
+| `pnpm storybook` | Storybook dev server on :6006 |
+| `pnpm test:storybook` | Runs every story as a test in headless Chromium: render, `play` function, axe a11y checks |
+| `pnpm test:unit` | Vitest + jsdom unit tests (MSW server in `src/test/`) |
+| `pnpm test` | Both projects |
 
-The PM agent owns TaskMaster initialization and task management. Other agents pull tasks from it and report back.
+Accessibility violations fail story tests (`a11y.test: 'error'` in `.storybook/preview.tsx`). Fix the violation; only opt a story out with `parameters: { a11y: { test: 'todo' } }` when there's a documented reason. Import story types from `@storybook/react-vite` and test utilities from `storybook/test`.
 
----
-
-## Key Conventions
-
-### Frontend
-
-- **TypeScript throughout** — no `any` without a comment explaining why
-- **Shared types** come from `@jobtracker/shared` — never redefine `ApplicationStatus` or `Application` in the frontend
-- **API calls** go through `packages/frontend/src/lib/api.ts` — never call `fetch` directly in components
-- **Auth state** via Supabase client in `lib/supabase.ts`; all data fetching via FastAPI backend
-- **Forms** use React Hook Form
-- **Server state** via TanStack Query (React Query)
-- **Status badge colors** imported from `@jobtracker/shared` — never hardcode
-
-### Backend
-
-- All responses: `{ "data": ..., "error": null }` or `{ "data": null, "error": "message" }`
-- Every protected endpoint verifies the Supabase JWT from `Authorization: Bearer <token>`
-- `user_id` always comes from the verified JWT — never trust it from the request body
-- Use `httpx` (async) for OpenGraph fetching with a 5-second timeout; catch all exceptions silently
-- Scheduler runs via APScheduler at startup, once daily at 02:00 UTC
-
-### Shared Package
-
-- Package name: `@jobtracker/shared`
-- Exports: `ApplicationStatus`, `Application`, `ApplicationCreate`, `ApplicationUpdate`, `STATUS_COLORS`, `STATUS_LABELS`, `URL_TO_STATUS`
-- The Python backend does NOT import from `shared/` — it maintains its own equivalent Pydantic models and Python enums
-
-### Database
-
-- Migrations in `supabase/migrations/` as numbered SQL files
-- RLS **enabled** on `applications` — users can only read/write their own rows
-- Storage bucket `application-files` has RLS: users can only access files under their own `user_id` prefix
-- Only the backend service role key may bypass RLS (for the scheduler)
-
----
-
-## OpenGraph Fetching
-
-`backend/app/services/opengraph.py` — `async def fetch_opengraph(url: str) -> dict`
-
-- `httpx.AsyncClient` with 5-second timeout and a realistic User-Agent
-- Parses HTML for: `og:title`, `og:site_name`, `og:image`
-- Falls back: `og:title` → `<title>` tag (strip site suffix); `og:site_name` → domain name
-- Returns `{ "title": None, "company": None, "logo_url": None }` on any failure
-- Never raises to the caller — all exceptions caught internally
-- `logo_url` is returned as-is (not validated, not downloaded); the frontend handles broken images with a fallback initials avatar
-
----
-
-## Application Status Flow
-
-```
-Applied (default)
-  ↓ manual
-Interviewing
-  ↓ manual          ↓ manual         ↓ auto (14 days in Applied)
-Offer            Rejected          Unlikely
-                 Role Eliminated
-```
-
-Auto-transition handled in `backend/app/services/scheduler.py`. All others via `PATCH /applications/{id}`.
-
----
-
-## File Uploads
-
-- Bucket: `application-files`
-- Path: `{user_id}/{application_id}/resume.pdf` or `.../cover_letter.pdf`
-- Max 10MB, PDF only
-- Signed download URLs generated on `GET /applications/{id}`, 1-hour expiry
-- Uploads handled by the backend using the service role key
-
----
-
-## Agent System
-
-Four subagents are defined in `agents/`. Each owns a domain and works autonomously. The PM agent owns the TaskMaster task list and coordinates via task status — it does not micromanage other agents.
-
-See `agents/AGENT_PM.md` for the coordination protocol.
-
----
-
-## What NOT to Do
-
-- Don't expose `SUPABASE_SERVICE_ROLE_KEY` to the frontend or browser
-- Don't call the Supabase database directly from the frontend (auth only via Supabase client; all data via FastAPI)
-- Don't skip RLS — every frontend-path query must be user-scoped
-- Don't use a headless browser or Playwright for OpenGraph fetching
-- Don't redefine types that live in `@jobtracker/shared`
-- Don't add CSV export or team features — explicitly out of scope for v1
-- Dark mode is supported — use `prefers-color-scheme` media query and CSS custom properties; no theme toggle needed
-- Don't edit files under `.taskmaster/` manually — let TaskMaster manage them
+A new component isn't done until its stories pass `pnpm test:storybook` and `pnpm exec tsc --noEmit` is clean.

@@ -1,214 +1,117 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { z } from 'zod'
+import type { AuthError } from '@supabase/supabase-js'
+import { Alert } from '../components/Alert/Alert'
+import { AuthLayout } from '../components/AuthLayout/AuthLayout'
+import { Button } from '../components/Button/Button'
+import { FormField } from '../components/FormField/FormField'
+import { Input } from '../components/Input/Input'
+import { PasswordInput } from '../components/PasswordInput/PasswordInput'
+import { focusRing } from '../lib/classes'
+import { cn } from '../lib/cn'
 import { useAuth } from '../hooks/useAuth'
 
-interface LoginFormValues {
-  email: string
-  password: string
+const schema = z.object({
+  email: z.string().trim().min(1, 'Enter your email').email('Enter an email like name@example.com'),
+  password: z.string().min(1, 'Enter your password'),
+})
+
+type LoginValues = z.infer<typeof schema>
+
+export interface LoginScreenProps {
+  /** Signs in, or throws an Error whose message the screen shows above the fields */
+  onSignIn: (email: string, password: string) => Promise<void>
 }
 
-function Spinner() {
+/**
+ * The Login screen without the auth wiring. A failed sign-in shows one danger Alert (which
+ * takes focus), keeps the email and clears the password; the fields themselves show no error.
+ */
+export function LoginScreen({ onSignIn }: LoginScreenProps) {
+  const {
+    register,
+    handleSubmit,
+    setValue,
+    formState: { errors, isSubmitting },
+  } = useForm<LoginValues>({
+    resolver: zodResolver(schema),
+    defaultValues: { email: '', password: '' },
+  })
+
+  const [submitError, setSubmitError] = useState<{ message: string } | null>(null)
+  const alertRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (submitError) alertRef.current?.focus()
+  }, [submitError])
+
+  const submit = handleSubmit(async ({ email, password }) => {
+    setSubmitError(null)
+    try {
+      await onSignIn(email, password)
+    } catch (error) {
+      setValue('password', '')
+      // A new object each time, so the same message focuses the alert again
+      setSubmitError({ message: error instanceof Error ? error.message : 'Something went wrong. Try again.' })
+    }
+  })
+
   return (
-    <svg
-      className="animate-spin w-4 h-4"
-      xmlns="http://www.w3.org/2000/svg"
-      fill="none"
-      viewBox="0 0 24 24"
-      aria-hidden="true"
-    >
-      <circle
-        className="opacity-25"
-        cx="12"
-        cy="12"
-        r="10"
-        stroke="currentColor"
-        strokeWidth="4"
-      />
-      <path
-        className="opacity-75"
-        fill="currentColor"
-        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
-      />
-    </svg>
+    <AuthLayout>
+      <form noValidate onSubmit={submit} className="flex flex-col gap-6">
+        <div className="flex flex-col gap-1.5">
+          <h1 className="font-display text-heading-h2 text-text-primary lg:text-heading-h1">Sign in</h1>
+          <p className="text-body-base text-text-muted">Welcome back. Pick up where you left off.</p>
+        </div>
+
+        {submitError && (
+          <Alert ref={alertRef} tone="danger">
+            {submitError.message}
+          </Alert>
+        )}
+
+        <FormField label="Email" error={errors.email?.message}>
+          <Input {...register('email')} type="email" autoComplete="email" inputMode="email" />
+        </FormField>
+        <FormField label="Password" error={errors.password?.message}>
+          <PasswordInput {...register('password')} autoComplete="current-password" placeholder="Password" />
+        </FormField>
+
+        <Button type="submit" variant="primary" disabled={isSubmitting} className="w-full">
+          {isSubmitting ? 'Signing in…' : 'Sign in'}
+        </Button>
+
+        <p className="flex flex-wrap justify-center gap-x-1 text-body-small text-text-muted">
+          Don’t have an account?
+          <Link to="/register" className={cn('rounded-sm text-label-small text-text-link underline', focusRing)}>
+            Create one
+          </Link>
+        </p>
+      </form>
+    </AuthLayout>
   )
+}
+
+// Supabase's wording for wrong credentials is terse; Figma's says what to do next
+function signInMessage(error: AuthError) {
+  return error.code === 'invalid_credentials'
+    ? 'That email and password don’t match. Check them and try again.'
+    : error.message
 }
 
 export function LoginPage() {
   const { signIn } = useAuth()
   const navigate = useNavigate()
-  const [serverError, setServerError] = useState<string | null>(null)
-
-  const {
-    register,
-    handleSubmit,
-    formState: { errors, isSubmitting },
-  } = useForm<LoginFormValues>()
-
-  const onSubmit = async (values: LoginFormValues) => {
-    setServerError(null)
-    const { error } = await signIn(values.email, values.password)
-    if (error) {
-      setServerError(error.message)
-      return
-    }
-    navigate('/')
-  }
 
   return (
-    <div
-      className="min-h-screen flex items-center justify-center px-4 py-12"
-      style={{ backgroundColor: 'var(--color-background)' }}
-    >
-      <div className="w-full max-w-sm">
-        {/* App brand */}
-        <div className="text-center mb-8">
-          <div
-            className="inline-flex items-center justify-center w-12 h-12 rounded-xl mb-4"
-            style={{ backgroundColor: 'var(--color-primary)' }}
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="white"
-              strokeWidth={2.5}
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className="w-6 h-6"
-              aria-hidden="true"
-            >
-              <rect x="2" y="7" width="20" height="14" rx="2" ry="2" />
-              <path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2" />
-            </svg>
-          </div>
-          <h1
-            className="text-2xl font-semibold"
-            style={{ color: 'var(--color-text)' }}
-          >
-            Welcome back
-          </h1>
-          <p
-            className="mt-1 text-sm"
-            style={{ color: 'var(--color-text-muted)' }}
-          >
-            Sign in to your Job Tracker account
-          </p>
-        </div>
-
-        {/* Card */}
-        <div
-          className="bg-white rounded-2xl p-8"
-          style={{ boxShadow: 'var(--shadow-md)' }}
-        >
-          {serverError && (
-            <div
-              className="mb-5 px-4 py-3 rounded-lg bg-red-50 border border-red-100 text-sm text-red-600"
-              role="alert"
-            >
-              {serverError}
-            </div>
-          )}
-
-          <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-5">
-            {/* Email */}
-            <div>
-              <label
-                htmlFor="login-email"
-                className="block text-sm font-medium mb-1.5"
-                style={{ color: 'var(--color-text)' }}
-              >
-                Email address
-              </label>
-              <input
-                id="login-email"
-                type="email"
-                autoComplete="email"
-                className={`form-input${errors.email ? ' is-error' : ''}`}
-                {...register('email', {
-                  required: 'Email is required',
-                  pattern: {
-                    value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
-                    message: 'Enter a valid email address',
-                  },
-                })}
-              />
-              {errors.email && (
-                <p className="mt-1.5 text-xs text-red-500" role="alert">
-                  {errors.email.message}
-                </p>
-              )}
-            </div>
-
-            {/* Password */}
-            <div>
-              <label
-                htmlFor="login-password"
-                className="block text-sm font-medium mb-1.5"
-                style={{ color: 'var(--color-text)' }}
-              >
-                Password
-              </label>
-              <input
-                id="login-password"
-                type="password"
-                autoComplete="current-password"
-                className={`form-input${errors.password ? ' is-error' : ''}`}
-                {...register('password', {
-                  required: 'Password is required',
-                  minLength: {
-                    value: 8,
-                    message: 'Password must be at least 8 characters',
-                  },
-                })}
-              />
-              {errors.password && (
-                <p className="mt-1.5 text-xs text-red-500" role="alert">
-                  {errors.password.message}
-                </p>
-              )}
-            </div>
-
-            {/* Submit */}
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="flex items-center justify-center gap-2 w-full py-3 px-4 rounded-lg text-white text-sm font-semibold transition-colors duration-150 cursor-pointer disabled:cursor-not-allowed disabled:opacity-70 mt-2"
-              style={{ backgroundColor: isSubmitting ? 'var(--color-cta-hover)' : 'var(--color-cta)' }}
-              onMouseEnter={(e) => {
-                if (!isSubmitting) {
-                  e.currentTarget.style.backgroundColor = 'var(--color-cta-hover)'
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (!isSubmitting) {
-                  e.currentTarget.style.backgroundColor = 'var(--color-cta)'
-                }
-              }}
-            >
-              {isSubmitting && <Spinner />}
-              {isSubmitting ? 'Signing in...' : 'Sign in'}
-            </button>
-          </form>
-        </div>
-
-        {/* Register link */}
-        <p
-          className="mt-6 text-center text-sm"
-          style={{ color: 'var(--color-text-muted)' }}
-        >
-          Don&apos;t have an account?{' '}
-          <Link
-            to="/register"
-            className="font-medium transition-colors duration-150"
-            style={{ color: 'var(--color-primary)' }}
-            onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--color-primary-hover)')}
-            onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--color-primary)')}
-          >
-            Create one
-          </Link>
-        </p>
-      </div>
-    </div>
+    <LoginScreen
+      onSignIn={async (email, password) => {
+        const { error } = await signIn(email, password)
+        if (error) throw new Error(signInMessage(error))
+        navigate('/')
+      }}
+    />
   )
 }

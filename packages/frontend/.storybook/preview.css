@@ -1,0 +1,4 @@
+/* Same as src/index.css, with the source path set from .storybook */
+@import "tailwindcss" source("../src");
+@import "../src/styles/tokens.css";
+@import "../src/styles/base.css";

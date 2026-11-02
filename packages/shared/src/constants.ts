@@ -1,15 +1,22 @@
 import type { ApplicationStatus } from './types.js'
 
-export const STATUS_COLORS: Record<
+/** The design system's color families (color/tone/*). Matches `Tone` in the frontend's `lib/tone.ts`. */
+export type StatusTone = 'neutral' | 'info' | 'warning' | 'positive' | 'danger'
+
+/** Badge appearances a status can take. */
+export type StatusAppearance = 'solid' | 'soft' | 'outline'
+
+/** How each status is drawn (Badge, StatusSelect, Swatch), from the Figma StatusSelect pattern. */
+export const STATUS_TONES: Record<
   ApplicationStatus,
-  { bg: string; text: string }
+  { tone: StatusTone; appearance: StatusAppearance }
 > = {
-  Applied: { bg: 'bg-blue-100', text: 'text-blue-700' },
-  Interviewing: { bg: 'bg-[#e4ede0]', text: 'text-[#4a6940]' },
-  Unlikely: { bg: 'bg-gray-100', text: 'text-gray-500' },
-  Offer: { bg: 'bg-emerald-100', text: 'text-emerald-700' },
-  Rejected: { bg: 'bg-red-100', text: 'text-red-600' },
-  'Role Eliminated': { bg: 'bg-slate-100', text: 'text-slate-600' },
+  Applied: { tone: 'info', appearance: 'solid' },
+  Interviewing: { tone: 'warning', appearance: 'solid' },
+  Offer: { tone: 'positive', appearance: 'solid' },
+  Rejected: { tone: 'danger', appearance: 'soft' },
+  Unlikely: { tone: 'neutral', appearance: 'soft' },
+  'Role Eliminated': { tone: 'neutral', appearance: 'outline' },
 }
 
 export const STATUS_LABELS: Record<ApplicationStatus, string> = {
@@ -19,14 +26,4 @@ export const STATUS_LABELS: Record<ApplicationStatus, string> = {
   Offer: 'Offer',
   Rejected: 'Rejected',
   'Role Eliminated': 'Role Eliminated',
-}
-
-export const URL_TO_STATUS: Record<string, ApplicationStatus | null> = {
-  all: null,
-  applied: 'Applied',
-  interviewing: 'Interviewing',
-  unlikely: 'Unlikely',
-  offer: 'Offer',
-  rejected: 'Rejected',
-  'role-eliminated': 'Role Eliminated',
 }

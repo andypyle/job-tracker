@@ -1,0 +1,16 @@
+@layer base {
+  /* showModal() makes the page inert but not still: keep it from scrolling behind a dialog */
+  :root:has(dialog:modal) {
+    overflow: hidden;
+  }
+
+  body {
+    @apply bg-bg-canvas font-sans text-body-base text-text-primary antialiased;
+  }
+}
+
+/*
+ * Reduced motion keeps opacity changes only. Components opt in with
+ * `motion-safe:` for transforms and `motion-reduce:` for their opacity fallback,
+ * so there is no global rule that zeroes every transition.
+ */
