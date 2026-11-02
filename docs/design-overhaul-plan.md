@@ -7,7 +7,7 @@ Branch: `design-overhaul`. Design decisions and rules live in the Figma file and
 
 ## Picking this up in a new session
 
-Read this file and CLAUDE.md first. **Next up: Phase 1 inputs** (Input, PasswordInput, Textarea, Checkbox, FormField), then the rest of Phase 1 in order.
+Read this file and CLAUDE.md first. **Next up: FileDropzone**, then the rest of Phase 1 in order (Badge and Swatch are done).
 
 ### Workflow per component
 
@@ -40,15 +40,26 @@ Read this file and CLAUDE.md first. **Next up: Phase 1 inputs** (Input, Password
 | MobileTopBar | 14:158 | MobileNav | 82:3 |
 | Screens | 4:4 | | |
 
-Done so far: Spinner 81:3, Button and IconButton 14:144.
+Done so far: Spinner 81:3, Button and IconButton 14:144, Input 14:145 (PasswordInput is Input plus the trailing slot), Textarea 49:111, Checkbox 39:3, FormField 14:146, Select 34:3, Badge 46:3, DatePicker 36:3.
 
 ### Things learned so far
 
-- **Password toggle:** the `eye` animation is useAnimations `visibility`, a toggle. Its static states run eye-off then eye, so check which `active` value shows which glyph before wiring PasswordInput (the spec: `eye` while hidden, `eye-off` while visible). The Icons page also has static `eye` and `eye-off`.
+- **Password toggle:** useAnimations `visibility` rests on `eye` and ends on `eye-off`, so PasswordInput passes `active={visible}`.
+- **Form controls and FormField:** FormField provides `{ id, describedBy, invalid }` through context (`FormField.context.ts`). New controls (Select, DatePicker) should call `useFieldControlProps(props)` so the label, hint/error and `aria-invalid` wire up on their own.
+- **2px borders without a shift:** fields keep a 1px border and add `inset-ring-1` in the same color for focus and error (`fieldFrame` in `src/lib/classes.ts`). Error wins over focus.
+- **Asset downloads from `get_design_context`:** the shell is zsh, so loop over URL pairs without relying on word splitting. Box SVGs are useful for reading exact geometry and colors (the checkbox check path came from one).
 - **Toasts and the pine band render in Dark mode** (per the IconButton spec). With `light-dark()` tokens that's just `[color-scheme:dark]` on the element.
 - **Color inheritance with local color-scheme:** `color` is resolved where it's set, so an element that sets `color-scheme` must also set its own text color (`text-text-primary`), or it inherits the outer mode's color.
 - **Vite reloads:** the first test run after adding a new dependency can fail with "Vite unexpectedly reloaded a test". Rerun; if it keeps happening, add the dependency to `optimizeDeps.include` in `vite.config.ts`.
 - **Trash icon:** stays animated by choice, though its resting lid differs slightly from the Figma glyph.
+- **Popovers:** `useAnchoredPopover` (`src/hooks`) shows a `popover="manual"` element, positions it from the anchor's rect (flipping above when there's more room), and closes it on a press outside. Classes are `popoverSurface` and `popoverMotion` in `src/lib/classes.ts`. In Select, focus stays on the trigger, which owns the keyboard through `aria-activedescendant`; the menu's `onMouseDown` prevents default so clicks don't steal focus. Closing is ours: Esc (with `stopPropagation`, so a surrounding Dialog stays open), blur, and a capture `pointerdown` outside. `auto` popovers were avoided because light dismiss fights the trigger's own click.
+- **Popover motion is CSS only:** `transition-discrete` on `display`/`overlay` plus `starting:open:` for the enter (`popoverMotion`). `open:` matches `:popover-open`, and it outranks the closed-state classes by specificity.
+- **React 18 and `popover`:** the attribute passes through, but the type comes from `src/types/popover.d.ts`.
+- **FormField exposes `labelId`** in its context, for parts that need the label as well (the Select listbox's `aria-labelledby`).
+- **Tones:** `Tone` and `tones` live in `src/lib/tone.ts`. Swatch is its own component (Chart legends need it too), not a Select part.
+- **Dates** are `YYYY-MM-DD` strings throughout (`src/lib/calendarDate.ts`, unit tested): they match `date_applied` and compare as strings. No date library.
+- **DatePicker:** focus moves into the grid (roving tabindex); Esc returns it to the calendar button, choosing a day returns it to the input. Typed text is read on blur or Enter; bad text sets `aria-invalid` and calls `onInvalidInput`, and the form shows the FormField message. Month changes keep the old grid mounted (aria-hidden) for the 120ms slide-out, so query the live grid, not the wrapper.
+- **Deviation:** outside-month days use text/muted, not Figma's text/subtle, which is 2.7:1 on the dark overlay (they're selectable, so they need 4.5:1). Worth fixing in Figma.
 - **No `any`, no `dark:` variants, no primitives in components.**
 
 ## Decisions
@@ -100,17 +111,18 @@ Basics
 - [x] IconButton
 
 Inputs
-- [ ] Input (leading icon, trailing slot, single-line ellipsis)
-- [ ] PasswordInput (Input plus the show/hide toggle; `aria-pressed`; keeps the cursor position)
-- [ ] Textarea
-- [ ] Checkbox
-- [ ] FormField (label, optional, control, hint, error)
-- [ ] Select (field | badge), with parts Trigger, BadgeTrigger, Menu, Option and Swatch (Popover API)
-- [ ] DatePicker (Popover API, calendar grid with keyboard navigation)
+- [x] Input (leading icon, trailing slot, single-line ellipsis)
+- [x] PasswordInput (Input plus the show/hide toggle; `aria-pressed`; keeps the cursor position)
+- [x] Textarea
+- [x] Checkbox
+- [x] FormField (label, optional, control, hint, error)
+- [x] Select (field | badge), with parts Trigger, BadgeTrigger, Menu and Option (Popover API); Swatch is a separate component
+- [x] DatePicker (Popover API, calendar grid with keyboard navigation), with parts Calendar and DayCell
 - [ ] FileDropzone (PDF only, 10MB max)
 
 Display
-- [ ] Badge
+- [x] Badge
+- [x] Swatch
 - [ ] Avatar (falls back to initials when the image is missing or broken)
 - [ ] Stat
 - [ ] ListItem

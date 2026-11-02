@@ -28,6 +28,7 @@ export const iconAnimations: Partial<Record<IconName, IconAnimation>> = {
   dashboard: { load: () => import('react-useanimations/lib/grid') },
   briefcase: { load: () => import('react-useanimations/lib/briefcase') },
   clock: { load: () => import('react-useanimations/lib/clock') },
+  calendar: { load: () => import('react-useanimations/lib/calendar') },
   ban: { load: () => import('react-useanimations/lib/slash') },
   /** Toggle: `active` shows the x */
   menu: { load: () => import('react-useanimations/lib/menu') },

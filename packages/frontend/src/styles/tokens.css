@@ -201,6 +201,31 @@
     }
   }
 
+  /* Calendar month change: slides --slide (±12px, 0 for reduced motion) with a cross-fade.
+     In over duration/base with ease/bounce; out over duration/fast with ease/in. */
+  --animate-slide-in: slide-in var(--duration-base) var(--ease-bounce) both;
+  --animate-slide-out: slide-out var(--duration-fast) var(--ease-in) both;
+  /* A selected fill appearing: from scale 0.85 over duration/base with ease/bounce */
+  --animate-pop-in: pop-in var(--duration-base) var(--ease-bounce) both;
+
+  @keyframes slide-in {
+    from {
+      opacity: 0;
+      translate: var(--slide, 0) 0;
+    }
+  }
+  @keyframes slide-out {
+    to {
+      opacity: 0;
+      translate: calc(var(--slide, 0) * -1) 0;
+    }
+  }
+  @keyframes pop-in {
+    from {
+      scale: 0.85;
+    }
+  }
+
   /* Text styles: one utility per Figma text style. Headings also need `font-display`. */
   --text-display-hero: 3.75rem;
   --text-display-hero--line-height: 4rem;
