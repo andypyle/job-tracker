@@ -1,6 +1,7 @@
 import { useEffect, useId, useState } from 'react'
 import { cn } from '../../lib/cn'
 import { useCountUp } from '../../hooks/useCountUp'
+import { prefersReducedMotion } from '../../lib/motion'
 import type { DonutChartProps } from './DonutChart.types'
 import type { ChartSeries } from './parts/ChartLegendItem/ChartLegendItem.types'
 import { ChartLegendItem } from './parts/ChartLegendItem/ChartLegendItem'
@@ -23,8 +24,6 @@ const seriesStroke: Record<ChartSeries, string> = {
   5: 'stroke-chart-series-5',
 }
 
-const reducedMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches
-
 /**
  * SVG circles with stroke-dasharray, starting at 12 o'clock, beside a legend of real text, so the
  * chart reads without color. On mount the ring sweeps in clockwise (a mask over 600ms, ease/out)
@@ -36,7 +35,7 @@ export function DonutChart({ className, data, label, total, totalLabel, ...props
   const shownTotal = total ?? sum
 
   // Count up from 0 on mount: useCountUp shows its first value as is, so start it at null
-  const [started, setStarted] = useState(reducedMotion)
+  const [started, setStarted] = useState(prefersReducedMotion)
   useEffect(() => setStarted(true), [])
   const counted = useCountUp(started ? shownTotal : null)
 

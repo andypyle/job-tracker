@@ -7,7 +7,7 @@ Branch: `design-overhaul`. Design decisions and rules live in the Figma file and
 
 ## Picking this up in a new session
 
-Read this file and CLAUDE.md first. **Next up: Alert**, then the rest of Phase 1 in order.
+Read this file and CLAUDE.md first. **Next up: Scrim**, then the rest of Phase 1 in order.
 
 ### Workflow per component
 
@@ -40,7 +40,7 @@ Read this file and CLAUDE.md first. **Next up: Alert**, then the rest of Phase 1
 | MobileTopBar | 14:158 | MobileNav | 82:3 |
 | Screens | 4:4 | | |
 
-Done so far: Spinner 81:3, Button and IconButton 14:144, Input 14:145 (PasswordInput is Input plus the trailing slot), Textarea 49:111, Checkbox 39:3, FormField 14:146, Select 34:3, Badge 46:3, DatePicker 36:3, FileDropzone 49:132, Avatar 14:151, Stat 14:153, ListItem 48:6, Card 48:38, DescriptionList 49:179, Timeline 49:209, Chart 53:4 (as BarChart and DonutChart), EmptyState 14:155, NavItem 14:152, PageHeader 57:3.
+Done so far: Spinner 81:3, Button and IconButton 14:144, Input 14:145 (PasswordInput is Input plus the trailing slot), Textarea 49:111, Checkbox 39:3, FormField 14:146, Select 34:3, Badge 46:3, DatePicker 36:3, FileDropzone 49:132, Avatar 14:151, Stat 14:153, ListItem 48:6, Card 48:38, DescriptionList 49:179, Timeline 49:209, Chart 53:4 (as BarChart and DonutChart), EmptyState 14:155, NavItem 14:152, PageHeader 57:3, Alert 81:5545, Toast 31:3 (with Toaster).
 
 ### Things learned so far
 
@@ -94,6 +94,15 @@ Done so far: Spinner 81:3, Button and IconButton 14:144, Input 14:145 (PasswordI
 - **PageHeader** is a `<header>`: `<PageHeader appearance="band|plain" title description? back={{ to, label }}? actions?>`. The title is the page's h1 (Heading/H1, Heading/H2 below md). `back` renders a router `Link` styled with `buttonVariants({ variant: 'ghost' })` plus the animated arrow-left, pulled left 16px so the arrow lines up with the title as in Figma. Below md the actions wrap under the title and the side padding drops to 16px (my choice; Figma only specifies 40px). The band's hairline takes 1px of its bottom padding (134px, as in Figma).
   - **Not done here:** the sticky bottom bar for actions below md. That's the app shell's Bottom bar (Phase 3).
   - **Untested:** the below-md layout. Story tests run at one viewport, and there's no viewport setup yet; check it at 390px when the screens are built.
+- **Alert** is `<Alert tone="danger|warning|info|positive">message</Alert>`. Danger is `role="alert"`, the others `role="status"`. The tone picks the soft fill, the 3px accent edge (taking 3px of the left padding), the static icon in the accent color (alert-circle, alert-triangle, info, check-circle) and the on-soft text. It forwards a ref and has `tabIndex={-1}`, so a form can focus it after a failed submit (`FocusAfterSubmit` story). It enters with `animate-drop-in` (new token: fade plus 4px down, ease/out, no bounce; reduced motion sets `--drop: 0px`). The icon is nudged 2px down to center on the first line, where Figma has it at the top of the row.
+- **Toasts:** call `toast({ tone, title, message?, action?: { label, onClick }, duration?, dismissible? })` from `src/lib/toast.ts` anywhere (a module store read with `useSyncExternalStore`, unit tested), and render `<Toaster />` once in the layout (Phase 3/4).
+  - **Toast** is the drawing: pinned to Dark mode on bg/band, a 4px tone edge, the tone's static icon in its accent color, Title/Base and Body/Small text, an optional ghost action and a dismiss IconButton. The IconButton keeps its 44px target with negative margins so the toast stays Figma's 80px. Danger is `role="alert"`, the rest `role="status"`.
+  - **Toaster** is a `<section aria-label="Notifications">`, bottom-right 24px from md, 16px insets above the safe area below. Newest at the bottom; a 4th marks the oldest leaving. Timers default to 5s, 8s for warning, and none for danger; they hold, keeping the time left, while the stack is hovered or focused. Touch and pen can swipe down or right to dismiss; the pointer is captured only after 8px, so taps still reach the buttons.
+  - **Motion** runs on the Web Animations API from the tokens (`readDuration`, `readEasing` and `prefersReducedMotion` in `src/lib/motion.ts`; `useCountUp` and DonutChart now use them too). Enter: up 16px from 0.98 scale over duration/slower (new token, 400ms) with ease/bounce, with the fade run separately over duration/base with ease/out. Both wait duration/fast (`fill: 'backwards'`): the older toasts start their FLIP in the slot the new one takes, and fading in on top of them while they're still there read as a flash on the bottom toast. Siblings FLIP (`translate`, `composite: 'add'`) over duration/slower with ease/bounce. Exit: right 24px with a fade over duration/base with ease/in, then the record is removed and the siblings FLIP into the gap. Reduced motion: opacity only, 120ms.
+  - **Deviation:** Figma's notes say 280ms in and 120ms out, which felt abrupt, so enter and reflow are 400ms and exit is 200ms. A fade tied to the bounce curve also popped, because the curve covers most of its distance in the first frames. Worth updating the Figma notes and adding duration/slower to the variables.
+  - **FLIP details:** leaving toasts FLIP too, so when a 4th pushes the oldest out it rises with the stack while it exits instead of jumping up first (the FLIP's added translate stacks on the exit's). Positions are layout positions (the section's top plus `offsetTop`), not `getBoundingClientRect`, which includes running animations and would restart an in-flight bounce as a 1px move.
+  - **Checking motion frame by frame:** record each element's rect, opacity and computed `translate` in a `requestAnimationFrame` loop from Playwright against a static Storybook build. It found both bugs above.
+  - **Story tests and motion:** axe measures text mid-fade as low contrast, so plays that leave toasts animating wait on `document.getAnimations()` before ending.
 - **Sub-pixel borders** compute to whole device pixels in Chromium (the 1.5px system marker reads 1px at 1x), so story tests shouldn't assert exact fractional border widths.
 - **No `any`, no `dark:` variants, no primitives in components.**
 
@@ -172,8 +181,8 @@ Navigation and layout
 - [x] PageHeader (band | plain)
 
 Feedback and overlays
-- [ ] Alert (Danger | Warning | Info | Positive)
-- [ ] Toast, plus a toaster provider
+- [x] Alert (Danger | Warning | Info | Positive)
+- [x] Toast, plus Toaster and the `toast()` store
 - [ ] Scrim
 - [ ] Dialog:
   - sizes

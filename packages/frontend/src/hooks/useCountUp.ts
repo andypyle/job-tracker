@@ -1,13 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { easeOut } from '../lib/easing'
-
-/** A `--duration-*` token in ms, read from tokens.css so JS motion keeps CSS timing */
-function readDuration(token: string, fallback: number) {
-  const raw = getComputedStyle(document.documentElement).getPropertyValue(token).trim()
-  const value = parseFloat(raw)
-  if (Number.isNaN(value)) return fallback
-  return raw.endsWith('ms') ? value : value * 1000
-}
+import { prefersReducedMotion, readDuration } from '../lib/motion'
 
 function decimalsOf(n: number) {
   const [, fraction = ''] = String(n).split('.')
@@ -32,7 +25,7 @@ export function useCountUp(target: number | null): number | null {
     }
 
     const from = shownRef.current ?? 0
-    if (target === null || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    if (target === null || prefersReducedMotion()) {
       show(target)
       return
     }
