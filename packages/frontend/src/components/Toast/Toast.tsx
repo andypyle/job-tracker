@@ -33,10 +33,17 @@ export const Toast = forwardRef<HTMLDivElement, ToastProps>(function Toast(
         <p className="text-title-base">{title}</p>
         {message && <p className="text-body-small text-text-on-band-muted">{message}</p>}
       </div>
-      {action && <div className="-my-2.5 shrink-0">{action}</div>}
-      {onDismiss && (
-        // A 44px target drawn where Figma's 32px button sits: the negative margins keep the toast 80px
-        <IconButton icon="x" label="Dismiss notification" onClick={onDismiss} className="-my-1.5 -mr-1.5" />
+      {(action || onDismiss) && (
+        // The 44px targets center on the 22px title line (-11px each way keeps the toast 80px) and
+        // sit side by side. The action's padding drops to 12px, matching the icon's inset, so the
+        // visible gaps (text to action, action to ×) are both 24px (deviation: Figma's 20px action
+        // padding leaves 44px before the ×). Centering puts the targets 5px below the top edge, so
+        // -3px on the right (into the 8px padding) gives the same 5px there: the × glyph sits
+        // 17px from the top and from the right.
+        <div className="-my-2.75 -mr-0.75 flex shrink-0 items-center">
+          {action && <div className="*:px-3">{action}</div>}
+          {onDismiss && <IconButton icon="x" label="Dismiss notification" onClick={onDismiss} />}
+        </div>
       )}
     </div>
   )

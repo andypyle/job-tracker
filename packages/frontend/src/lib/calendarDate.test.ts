@@ -4,6 +4,7 @@ import {
   addMonths,
   formatDisplayDate,
   formatLongDate,
+  formatShortDate,
   monthGrid,
   parseDateInput,
 } from './calendarDate'
@@ -66,5 +67,10 @@ describe('formatting', () => {
   it('formats for the field and for screen readers', () => {
     expect(formatDisplayDate('2026-10-21')).toBe('Oct 21, 2026')
     expect(formatLongDate('2026-10-21')).toBe('Wednesday, October 21, 2026')
+  })
+
+  it('drops the year from short dates in the current year', () => {
+    expect(formatShortDate('2026-10-02', '2026-11-01')).toBe('Oct 2')
+    expect(formatShortDate('2025-12-30', '2026-01-04')).toBe('Dec 30, 2025')
   })
 })

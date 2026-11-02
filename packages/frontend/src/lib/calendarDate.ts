@@ -85,7 +85,12 @@ const formatters = {
     year: 'numeric',
   }),
   month: new Intl.DateTimeFormat('en-US', { month: 'long', year: 'numeric' }),
+  short: new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' }),
 }
+
+/** "Oct 2" in the current year, "Oct 2, 2025" otherwise; for list meta lines */
+export const formatShortDate = (iso: ISODate, today: ISODate = todayISO()) =>
+  iso.slice(0, 4) === today.slice(0, 4) ? formatters.short.format(fromISODate(iso)) : formatDisplayDate(iso)
 
 /** "Oct 21, 2026" */
 export const formatDisplayDate = (iso: ISODate) => formatters.display.format(fromISODate(iso))

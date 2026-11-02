@@ -19,7 +19,7 @@ export interface ToastProps
   title: ReactNode
   /** Detail under the title. Body/Small, text/on-band-muted. */
   message?: ReactNode
-  /** An optional ghost Button, such as Undo */
+  /** An optional ghost Button, such as Undo. Its side padding is reduced to 12px here. */
   action?: ReactNode
   /** Shows the dismiss button ("Dismiss notification") and runs when it's pressed */
   onDismiss?: () => void

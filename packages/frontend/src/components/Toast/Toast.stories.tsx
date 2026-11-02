@@ -69,8 +69,30 @@ export const WithAction: Story = {
     action: <Button variant="ghost">Undo</Button>,
   },
   play: async ({ canvas }) => {
-    await expect(canvas.getByRole('button', { name: 'Undo' })).toBeVisible()
+    const toast = canvas.getByRole('status').getBoundingClientRect()
+    const undo = canvas.getByRole('button', { name: 'Undo' })
+    const dismiss = canvas.getByRole('button', { name: 'Dismiss notification' })
+    await expect(undo).toBeVisible()
     await expect(getComputedStyle(canvas.getByRole('status')).height).toBe('80px')
+
+    // Even gaps: text to Undo, and Undo's label to the × glyph, are both 24px
+    const range = document.createRange()
+    range.selectNodeContents(undo)
+    const label = range.getBoundingClientRect()
+    const glyph = (dismiss.querySelector('svg') as SVGElement).getBoundingClientRect()
+    const text = canvas.getByText('Application deleted').parentElement!.getBoundingClientRect()
+    await expect(Math.round(label.left - text.right)).toBe(24)
+    await expect(Math.round(glyph.left - label.right)).toBe(24)
+    // The × sits as far from the right edge as from the top: 5px to the target, 17px to the glyph
+    const target = dismiss.getBoundingClientRect()
+    await expect(Math.round(toast.right - target.right)).toBe(5)
+    await expect(Math.round(target.top - toast.top)).toBe(5)
+    await expect(Math.round(toast.right - glyph.right)).toBe(Math.round(glyph.top - toast.top))
+    // Both targets center on the title line
+    const title = canvas.getByText('Application deleted').getBoundingClientRect()
+    const center = (rect: DOMRect) => rect.top + rect.height / 2
+    await expect(Math.round(center(undo.getBoundingClientRect()))).toBe(Math.round(center(title)))
+    await expect(Math.round(center(dismiss.getBoundingClientRect()))).toBe(Math.round(center(title)))
   },
 }
 
