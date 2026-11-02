@@ -167,7 +167,7 @@ async def create_application(
     # Supabase expects ISO string for date
     insert_data["date_applied"] = insert_data["date_applied"].isoformat()
     insert_data["user_id"] = user_id
-    insert_data["status"] = ApplicationStatus.Applied.value  # always Applied on creation
+    insert_data["status"] = payload.status.value  # Applied unless the client chose another
 
     try:
         result = client.table("applications").insert(insert_data).execute()

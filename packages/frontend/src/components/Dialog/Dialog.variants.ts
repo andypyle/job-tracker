@@ -13,7 +13,7 @@ import { cva } from 'class-variance-authority'
 export const dialogVariants = cva(
   [
     // `open:flex`, not `flex`: an author `display` would beat the UA's `dialog:not([open])` none
-    'm-auto max-h-[calc(100dvh-4rem)] max-w-[calc(100vw-2rem)] flex-col overflow-hidden open:flex',
+    'm-auto max-h-[calc(100dvh-6rem)] max-w-[calc(100vw-2rem)] flex-col overflow-hidden open:flex',
     'rounded-md border-0 bg-bg-overlay p-0 text-text-primary shadow-overlay',
     'max-md:mb-0 max-md:max-h-[90dvh] max-md:w-full max-md:max-w-none max-md:rounded-b-none',
     // Motion

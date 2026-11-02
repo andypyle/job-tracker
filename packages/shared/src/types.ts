@@ -53,7 +53,10 @@ export type ApplicationCreate = Omit<
   | 'resume_url'
   | 'cover_letter_url'
   | 'status_history'
->
+> & {
+  /** Defaults to Applied on the backend */
+  status?: ApplicationStatus
+}
 
 export type ApplicationUpdate = Partial<
   ApplicationCreate & { status: ApplicationStatus }

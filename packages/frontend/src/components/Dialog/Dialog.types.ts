@@ -5,7 +5,11 @@ import type { dialogVariants } from './Dialog.variants'
 export interface DialogProps
   extends Omit<DialogHTMLAttributes<HTMLDialogElement>, 'title' | 'open' | 'role'>,
     VariantProps<typeof dialogVariants> {
-  /** Controlled: true opens it as a modal (`showModal()`), false closes it with the exit motion */
+  /**
+   * Controlled: true opens it as a modal (`showModal()`), false closes it with the exit motion.
+   * Focus starts on the element marked `data-autofocus`, or else the first focusable one (the
+   * close button). React's `autoFocus` doesn't work here.
+   */
   open: boolean
   /**
    * Asks to close: Esc, the close button, or a press on the scrim (not for an alertdialog). Set
@@ -16,7 +20,7 @@ export interface DialogProps
   size?: 'small' | 'medium' | 'large'
   /**
    * `alertdialog` for confirmations: no close button, and pressing the scrim does nothing. Put
-   * `autoFocus` on the safe action (Cancel) so focus starts there.
+   * `data-autofocus` on the safe action (Cancel) so focus starts there.
    */
   role?: 'dialog' | 'alertdialog'
   /** Heading/H2; names the dialog (aria-labelledby) */

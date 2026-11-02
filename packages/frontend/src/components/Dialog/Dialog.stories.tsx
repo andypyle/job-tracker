@@ -2,6 +2,8 @@ import type { Meta, StoryObj } from '@storybook/react-vite'
 import { useState, type ComponentProps } from 'react'
 import { expect, userEvent, waitFor, within } from 'storybook/test'
 import { Button } from '../Button/Button'
+import { FormField } from '../FormField/FormField'
+import { Input } from '../Input/Input'
 import { Dialog } from './Dialog'
 
 type DialogStoryProps = Omit<ComponentProps<typeof Dialog>, 'open' | 'onClose'> & { trigger?: string }
@@ -95,6 +97,23 @@ export const Default: Story = {
   },
 }
 
+/** Focus starts on the element marked data-autofocus instead of the close button */
+export const StartingFocus: Story = {
+  args: {
+    children: (
+      <FormField label="Job post URL">
+        <Input data-autofocus type="url" />
+      </FormField>
+    ),
+  },
+  play: async ({ canvas, canvasElement }) => {
+    await userEvent.click(canvas.getByRole('button', { name: 'Add application' }))
+    const dialog = await page(canvasElement).findByRole('dialog', { name: 'Add application' })
+    await expect(within(dialog).getByRole('textbox', { name: 'Job post URL' })).toHaveFocus()
+    await opened(dialog)
+  },
+}
+
 /** The close button and a press on the scrim both close it */
 export const CloseButtonAndScrim: Story = {
   play: async ({ canvas, canvasElement }) => {
@@ -181,7 +200,7 @@ export const AlertDialog: Story = {
           onClose={close}
           footer={
             <>
-              <Button variant="secondary" autoFocus onClick={close}>
+              <Button variant="secondary" data-autofocus onClick={close}>
                 Cancel
               </Button>
               <Button variant="danger" onClick={close}>

@@ -36,6 +36,10 @@ export function Dialog({
     if (open && !el.open) {
       setScrolled(false)
       el.showModal()
+      // showModal focuses an `autofocus` element, else the first focusable (the close button).
+      // React never renders `autofocus` (its autoFocus runs at mount, while this is still
+      // closed), so content marks its starting point with data-autofocus instead.
+      el.querySelector<HTMLElement>('[data-autofocus]')?.focus()
     } else if (!open && el.open) {
       el.close()
     }
@@ -97,7 +101,7 @@ export function Dialog({
           ref={body}
           data-dialog-body=""
           tabIndex={overflows ? 0 : undefined}
-          className={cn(focusRing, 'min-h-0 flex-1 overflow-y-auto px-6 pb-6 -outline-offset-2')}
+          className={cn(focusRing, 'min-h-0 flex-1 overflow-y-auto px-6 pt-5 pb-6 -outline-offset-2')}
           onScroll={(event) => setScrolled(event.currentTarget.scrollTop > 0)}
         >
           {children}

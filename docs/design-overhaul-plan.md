@@ -105,9 +105,10 @@ Done so far: Spinner 81:3, Button and IconButton 14:144, Input 14:145 (PasswordI
   - **Checking motion frame by frame:** record each element's rect, opacity and computed `translate` in a `requestAnimationFrame` loop from Playwright against a static Storybook build. It found both bugs above.
   - **Story tests and motion:** axe measures text mid-fade as low contrast, so plays that leave toasts animating wait on `document.getAnimations()` before ending.
 - **Dialog** is a native `<dialog>` with `showModal()`: `<Dialog open onClose size="small|medium|large" role="dialog|alertdialog" title description? footer?>body</Dialog>`. The body varies, so it's children; the header and footer are props.
-  - **Controlled:** Esc (`cancel`, default prevented), the close button and a press on the scrim (the click's target is the `<dialog>` itself) all call `onClose`; it closes when `open` turns false, and the browser returns focus to the trigger. An alertdialog has no close button and ignores the scrim; put `autoFocus` on the safe action.
+  - **Controlled:** Esc (`cancel`, default prevented), the close button and a press on the scrim (the click's target is the `<dialog>` itself) all call `onClose`; it closes when `open` turns false, and the browser returns focus to the trigger. An alertdialog has no close button and ignores the scrim; put `data-autofocus` on the safe action.
+  - **Starting focus:** after `showModal()`, Dialog focuses the element marked `data-autofocus`, if any. React's `autoFocus` can't do this: React never renders the `autofocus` attribute that `showModal()` looks for, and its mount-time focus runs while the dialog is still closed. Without a marker, focus goes to the first focusable element, the close button.
   - **Motion is CSS only**, like the popovers: `open:` and `starting:open:` with `transition-discrete` on `display`/`overlay`, from `--dialog-y`/`--dialog-scale` (8px and 0.96; 100% and 1 for the sheet; 0 and 1 for reduced motion). The scrim is `backdrop:` utilities on the same pattern. Use `open:flex`, never `flex`, or the closed dialog shows (an author `display` beats the UA's `dialog:not([open])`). Add `border-0 p-0`: the UA gives `<dialog>` a border and padding.
-  - **Body:** `min-h-0 flex-1 overflow-y-auto`, padded 24px across and below (my choice; Figma's slot is full-bleed, so check against the AddApplication pattern). Scrolling shows the header's divider (transparent until then, so nothing shifts). While it overflows it's a tab stop, since axe requires keyboard access to a scrollable region with nothing focusable inside. Without children there's no body.
+  - **Body:** `min-h-0 flex-1 overflow-y-auto`, padded 20px on top and 24px across and below, from the AddApplication pattern (Figma's slot itself is full-bleed). From md the dialog keeps 48px from the viewport's top and bottom (`max-h-[calc(100dvh-6rem)]`), as in the Add application screen. Scrolling shows the header's divider (transparent until then, so nothing shifts). While it overflows it's a tab stop, since axe requires keyboard access to a scrollable region with nothing focusable inside. Without children there's no body.
   - **Page scroll:** `showModal()` makes the page inert but not still, so `base.css` has `:root:has(dialog:modal) { overflow: hidden }`.
   - **Esc in story tests:** the browser fires `cancel` only for a trusted keypress, so the stories dispatch `cancel` directly.
 - **Sub-pixel borders** compute to whole device pixels in Chromium (the 1.5px system marker reads 1px at 1x), so story tests shouldn't assert exact fractional border widths.
@@ -224,11 +225,26 @@ Built from the Figma Patterns pages:
   - Trailing: StatusSelect (named "Status: {title} at {company}"; `onStatusChange` goes to its `onChange`, so pass `mutateAsync`), with a small neutral/outline Referral Badge under it, 6px apart, right-aligned.
   - `ApplicationCardSkeleton` (exported from `ApplicationCard.tsx`) is Figma's 88px loading row, `aria-hidden`, pulsing like Stat. Its padding is Figma's 16px all round, not the row's 20px across. Put `aria-busy` on the list.
   - **Dates:** `formatShortDate` (`src/lib/calendarDate.ts`) drops the year in the current year ("Oct 2"), as the Figma screens do. The component page shows "Oct 21, 2026"; the screens win.
-- [ ] ApplicationForm:
+- [x] ApplicationForm:
   - field order and the two-column grid as designed
   - link fetch with a Spinner in the URL input
   - fetch results fill only empty fields
   - used for both Add and Edit
+
+  Notes:
+  - `<ApplicationForm id application? onSubmit fetchDetails?>` is the dialog body only, with no buttons. The footer's submit button points at it with `form={id}`. Pass `application` for Edit.
+  - **What `onSubmit` gets:** `{ application, resume, coverLetter }`.
+    - `application` is an `ApplicationCreate` with trimmed fields. For Add, empty optional fields are left out. For Edit, they're sent as `''`, because PATCH uses `exclude_unset` and leaves out anything not sent.
+    - `resume` and `coverLetter` are each a new `File` to upload, `null` to delete the saved file, or `undefined` to leave it alone. Nothing is deleted until save, so Cancel discards a removal.
+    - The caller does the create or update and the uploads, and tracks pending state for the footer button. If it throws, the message shows in a danger Alert above the fields, which takes focus.
+  - **Validation:** RHF and zod, `mode: 'onTouched'` (errors on blur or submit, then live). Job title, company, date and status are required. The link must be http(s) if given. Bad typed date text is tracked separately, because DatePicker keeps its last good value. On submit, focus goes to the first invalid field.
+  - **Link lookup:** runs on paste and on blur, for a valid link that differs from the last one looked up (so Edit doesn't re-fetch the saved link). It fills title, company, compensation and the hidden logo, but only fields that are still empty when the result arrives, so anything typed meanwhile stays. A newer lookup wins over one in flight. The Spinner (md, in the Input's trailing slot) is visual only. A persistent `aria-live` line announces "Getting details", then "Filled in job title and compensation" or "No details found for this link". Lookup failures stay quiet. `fetchDetails` defaults to `fetchOpenGraph`; stories pass a deferred stand-in.
+  - **Layout:** a size container, with two columns from 31rem (each field gets 240px, per the pattern) rather than `sm:` on the viewport. URL, the referral Checkbox and Notes span both columns.
+  - **Status on create (backend change):** `ApplicationCreate` (shared and Pydantic) takes an optional `status`, defaulting to Applied. The first history row records it. There are new backend tests for this.
+  - **Deviation:** Industry is a text Input ("e.g. Healthcare"), not Figma's Select, because industry is free text with no fixed list (decided 2026-11-01). Worth updating in Figma.
+  - Status options (`statusOptions`, `statusOrder`) now live in `src/lib/statusOptions.ts`, shared with StatusSelect.
+  - **Starting focus:** the link field has `data-autofocus`, so inside a Dialog focus starts there (pasting the link is the first step), not on the close button.
+  - **OpenGraph tests fixed:** four `tests/test_opengraph.py` tests were stale after 18d5c33. Three expected no `compensation` key. One expected the domain fallback that commit removed on purpose: job-board hosts aren't company names, so no company is better than a domain. Added tests for what that commit introduced: JSON-LD JobPosting (title, company, logo, salary), "Role at Company" titles, a domain-like `og:site_name`, and the salary text scan.
 - [ ] Sidebar (nav with counts, account block)
 - [ ] MobileTopBar
 - [ ] MobileNav (the trigger, a panel in a `<dialog>`, staggered enter, focus returns to the trigger)

@@ -133,8 +133,8 @@ def test_get_application_not_found(client):
 # ---------------------------------------------------------------------------
 
 
-def test_create_application_sets_status_to_applied(client):
-    """POST /applications always creates with status='Applied', ignoring any other value."""
+def test_create_application_defaults_status_to_applied(client):
+    """POST /applications creates with status='Applied' when no status is given."""
     created_row = {
         "id": TEST_APP_ID,
         "user_id": TEST_USER_ID,
@@ -165,11 +165,58 @@ def test_create_application_sets_status_to_applied(client):
     assert body["error"] is None
     assert body["data"]["status"] == "Applied"
 
-    # Confirm the insert was called with status=Applied
-    insert_call_args = client_mock.table.return_value.insert.call_args
-    assert insert_call_args is not None
-    inserted_data = insert_call_args[0][0]
+    # Confirm the application insert (the first; the second is the history row) used status=Applied
+    insert_calls = client_mock.table.return_value.insert.call_args_list
+    assert insert_calls
+    inserted_data = insert_calls[0][0][0]
     assert inserted_data["status"] == "Applied"
+
+
+def test_create_application_accepts_status(client):
+    """POST /applications stores a chosen status and records it as the first history entry."""
+    created_row = {
+        "id": TEST_APP_ID,
+        "user_id": TEST_USER_ID,
+        "job_title": "Senior Engineer",
+        "company": "TestCo",
+        "status": "Interviewing",
+        "date_applied": "2026-04-01",
+        "is_referral": False,
+        "resume_path": None,
+        "cover_letter_path": None,
+        "created_at": "2026-04-01T00:00:00",
+        "updated_at": "2026-04-01T00:00:00",
+    }
+    client_mock, _ = _make_supabase_mock([created_row])
+
+    payload = {
+        "job_title": "Senior Engineer",
+        "company": "TestCo",
+        "date_applied": "2026-04-01",
+        "status": "Interviewing",
+    }
+
+    with patch("app.routers.applications.create_client", return_value=client_mock):
+        resp = client.post("/applications", json=payload, headers=AUTH_HEADER)
+
+    assert resp.status_code == 201
+    assert resp.json()["data"]["status"] == "Interviewing"
+    insert_calls = [c[0][0] for c in client_mock.table.return_value.insert.call_args_list]
+    assert insert_calls[0]["status"] == "Interviewing"
+    assert insert_calls[1]["new_status"] == "Interviewing"
+    assert insert_calls[1]["old_status"] is None
+
+
+def test_create_application_rejects_unknown_status(client):
+    """POST /applications returns 422 for a status that isn't one of the six."""
+    payload = {
+        "job_title": "Senior Engineer",
+        "company": "TestCo",
+        "date_applied": "2026-04-01",
+        "status": "Ghosted",
+    }
+    resp = client.post("/applications", json=payload, headers=AUTH_HEADER)
+    assert resp.status_code == 422
 
 
 def test_create_application_sets_user_id_from_jwt(client):

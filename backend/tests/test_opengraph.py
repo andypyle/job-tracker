@@ -20,6 +20,8 @@ def _make_html_response(
     title_tag=None,
     og_site_name=None,
     og_image=None,
+    head="",
+    body="",
 ) -> str:
     """Build minimal HTML with whichever OG tags are provided."""
     meta_tags = ""
@@ -37,8 +39,9 @@ def _make_html_response(
 <head>
 {meta_tags}
 {title_element}
+{head}
 </head>
-<body></body>
+<body>{body}</body>
 </html>"""
 
 
@@ -106,23 +109,95 @@ async def test_fetch_opengraph_falls_back_to_title_tag():
     assert result["company"] == "Acme Inc"
 
 
+def _patch_client(html: str):
+    """Patch httpx.AsyncClient so get() returns a 200 with the given HTML."""
+    patcher = patch("httpx.AsyncClient")
+    MockClient = patcher.start()
+    mock_client_instance = AsyncMock()
+    mock_client_instance.get = AsyncMock(return_value=_mock_httpx_response(html))
+    MockClient.return_value.__aenter__ = AsyncMock(return_value=mock_client_instance)
+    MockClient.return_value.__aexit__ = AsyncMock(return_value=False)
+    return patcher
+
+
 @pytest.mark.asyncio
-async def test_fetch_opengraph_falls_back_to_domain():
-    """Falls back to domain name when og:site_name is absent."""
-    html = _make_html_response(
-        og_title="Engineer Role",
-    )
-
-    with patch("httpx.AsyncClient") as MockClient:
-        mock_client_instance = AsyncMock()
-        mock_client_instance.get = AsyncMock(return_value=_mock_httpx_response(html))
-        MockClient.return_value.__aenter__ = AsyncMock(return_value=mock_client_instance)
-        MockClient.return_value.__aexit__ = AsyncMock(return_value=False)
-
+async def test_fetch_opengraph_does_not_use_domain_as_company():
+    """Leaves company empty rather than guessing from the URL: job-board hosts
+    (jobs.lever.co, boards.greenhouse.io) aren't company names."""
+    patcher = _patch_client(_make_html_response(og_title="Engineer Role"))
+    try:
         result = await fetch_opengraph("https://www.acme.com/jobs/123")
+    finally:
+        patcher.stop()
 
-    # www. prefix should be stripped
-    assert result["company"] == "acme.com"
+    assert result["title"] == "Engineer Role"
+    assert result["company"] is None
+
+
+@pytest.mark.asyncio
+async def test_fetch_opengraph_ignores_site_name_that_is_a_domain():
+    """An og:site_name that's a domain or URL isn't used as the company."""
+    patcher = _patch_client(_make_html_response(og_title="Engineer", og_site_name="boards.greenhouse.io"))
+    try:
+        result = await fetch_opengraph("https://boards.greenhouse.io/acme/jobs/1")
+    finally:
+        patcher.stop()
+
+    assert result["company"] is None
+
+
+@pytest.mark.asyncio
+async def test_fetch_opengraph_reads_job_posting_json_ld():
+    """JSON-LD JobPosting wins: title, hiringOrganization name and logo, and baseSalary."""
+    ld = """<script type="application/ld+json">{
+      "@context": "https://schema.org",
+      "@type": "JobPosting",
+      "title": "Senior Product Designer",
+      "hiringOrganization": {"@type": "Organization", "name": "Northwind Labs",
+                             "logo": {"url": "https://northwindlabs.com/logo.png"}},
+      "baseSalary": {"@type": "MonetaryAmount", "currency": "USD",
+                     "value": {"minValue": 165000, "maxValue": 190000, "unitText": "YEAR"}}
+    }</script>"""
+    html = _make_html_response(og_title="Careers | Lever", og_site_name="Lever", head=ld)
+    patcher = _patch_client(html)
+    try:
+        result = await fetch_opengraph("https://jobs.lever.co/northwind/123")
+    finally:
+        patcher.stop()
+
+    assert result == {
+        "title": "Senior Product Designer",
+        "company": "Northwind Labs",
+        "logo_url": "https://northwindlabs.com/logo.png",
+        "compensation": "USD 165,000 – 190,000 / YEAR",
+    }
+
+
+@pytest.mark.asyncio
+async def test_fetch_opengraph_reads_company_from_title_at_pattern():
+    """Without JSON-LD or og:site_name, "Role at Company | Board" gives the company."""
+    html = _make_html_response(title_tag="Product Designer at Northwind Labs | Lever")
+    patcher = _patch_client(html)
+    try:
+        result = await fetch_opengraph("https://jobs.lever.co/northwind/123")
+    finally:
+        patcher.stop()
+
+    assert result["title"] == "Product Designer at Northwind Labs"
+    assert result["company"] == "Northwind Labs"
+
+
+@pytest.mark.asyncio
+async def test_fetch_opengraph_scans_page_text_for_salary():
+    """Without a JSON-LD baseSalary, a salary in the page text is used."""
+    html = _make_html_response(og_title="Engineer", body="<p>Pay: $120K - $150K per year, plus equity.</p>")
+    patcher = _patch_client(html)
+    try:
+        result = await fetch_opengraph("https://acme.com/jobs/1")
+    finally:
+        patcher.stop()
+
+    assert result["compensation"] == "$120K - $150K per year"
 
 
 @pytest.mark.asyncio
@@ -138,7 +213,7 @@ async def test_fetch_opengraph_returns_nulls_on_http_error():
 
         result = await fetch_opengraph("https://unreachable.example.com")
 
-    assert result == {"title": None, "company": None, "logo_url": None}
+    assert result == {"title": None, "company": None, "logo_url": None, "compensation": None}
 
 
 @pytest.mark.asyncio
@@ -155,7 +230,7 @@ async def test_fetch_opengraph_returns_nulls_on_invalid_url():
 
         result = await fetch_opengraph("not-a-valid-url")
 
-    assert result == {"title": None, "company": None, "logo_url": None}
+    assert result == {"title": None, "company": None, "logo_url": None, "compensation": None}
 
 
 @pytest.mark.asyncio
@@ -170,7 +245,7 @@ async def test_fetch_opengraph_returns_nulls_on_non_200_response():
 
         result = await fetch_opengraph("https://example.com/not-found")
 
-    assert result == {"title": None, "company": None, "logo_url": None}
+    assert result == {"title": None, "company": None, "logo_url": None, "compensation": None}
 
 
 # ---------------------------------------------------------------------------

@@ -1,19 +1,9 @@
 import { useEffect, useState } from 'react'
-import { STATUS_LABELS, STATUS_TONES, type ApplicationStatus } from '@jobtracker/shared'
+import { STATUS_LABELS, type ApplicationStatus } from '@jobtracker/shared'
+import { statusOptions } from '../../lib/statusOptions'
 import { toast } from '../../lib/toast'
 import { Select } from '../Select/Select'
-import type { SelectOption } from '../Select/Select.types'
 import type { StatusSelectProps } from './StatusSelect.types'
-
-// The menu order from the Figma StatusSelect pattern
-const order: ApplicationStatus[] = ['Applied', 'Interviewing', 'Offer', 'Rejected', 'Unlikely', 'Role Eliminated']
-
-const options: SelectOption<ApplicationStatus>[] = order.map((status) => ({
-  value: status,
-  label: STATUS_LABELS[status],
-  tone: STATUS_TONES[status].tone,
-  badgeAppearance: STATUS_TONES[status].appearance,
-}))
 
 /**
  * The editable status: a badge Select drawn with the app's status tones.
@@ -61,7 +51,7 @@ export function StatusSelect({
   return (
     <Select
       appearance="badge"
-      options={options}
+      options={statusOptions}
       value={shown}
       onChange={(next) => void save(next, shown, true)}
       busy={busy}
