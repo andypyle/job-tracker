@@ -7,7 +7,7 @@ Branch: `design-overhaul`. Design decisions and rules live in the Figma file and
 
 ## Picking this up in a new session
 
-Read this file and CLAUDE.md first. **Next up: Timeline**, then the rest of Phase 1 in order.
+Read this file and CLAUDE.md first. **Next up: Chart**, then the rest of Phase 1 in order.
 
 ### Workflow per component
 
@@ -40,7 +40,7 @@ Read this file and CLAUDE.md first. **Next up: Timeline**, then the rest of Phas
 | MobileTopBar | 14:158 | MobileNav | 82:3 |
 | Screens | 4:4 | | |
 
-Done so far: Spinner 81:3, Button and IconButton 14:144, Input 14:145 (PasswordInput is Input plus the trailing slot), Textarea 49:111, Checkbox 39:3, FormField 14:146, Select 34:3, Badge 46:3, DatePicker 36:3, FileDropzone 49:132, Avatar 14:151, Stat 14:153, ListItem 48:6, Card 48:38, DescriptionList 49:179.
+Done so far: Spinner 81:3, Button and IconButton 14:144, Input 14:145 (PasswordInput is Input plus the trailing slot), Textarea 49:111, Checkbox 39:3, FormField 14:146, Select 34:3, Badge 46:3, DatePicker 36:3, FileDropzone 49:132, Avatar 14:151, Stat 14:153, ListItem 48:6, Card 48:38, DescriptionList 49:179, Timeline 49:209.
 
 ### Things learned so far
 
@@ -81,6 +81,9 @@ Done so far: Spinner 81:3, Button and IconButton 14:144, Input 14:145 (PasswordI
 - **Card** is composable too, not Figma's `title`/`action` props: `<Card padding="default|flush"><CardHeader><CardTitle>…</CardTitle><Button /></CardHeader>{body}</Card>`. It's a `<section>`; `CardTitle` (an h2 by default, `as` for h3/h4, always Heading/H3) takes an id from `Card.context.ts` and reports itself, so `aria-labelledby` only appears when there is a title. `CardHeader` reads the padding from context: flush adds the padding and the border/subtle divider, with the divider taking 1px of the bottom padding so the header is Figma's 60px.
 - **DescriptionList** is a `<dl>` and a size container; `<DescriptionListItem label="Compensation">$165k–$190k</DescriptionListItem>` is a `<div>` with `<dt>`/`<dd>`. Items stack below `@lg` (32rem, the list's width, not the viewport's) and go inline with a 160px label column from there. Each item draws its own divider below (the last one too, as in Figma), inside the bottom padding: 48px inline, 72px stacked. An empty value (null, undefined, false, '') reads "Not set" in text/muted.
 - **Story decorators nest:** a story's decorators wrap inside the meta's, they don't replace them. To vary a wrapper per story, read a story parameter in the meta decorator (`parameters.stacked` in the DescriptionList stories).
+- **Composable only where content varies.** Shells with children and parts (ListItem, Card, Dialog) are for components whose insides change from use to use. When the design fixes the structure, use props, with ReactNode props for slots. Timeline was first built with parts and then switched to props.
+- **Timeline** is an `<ol>` of `<TimelineItem actor="user|system" badge={<Badge/>} time="Oct 9, 2026 · 3:14 PM" dateTime="2026-10-09T15:14">event text</TimelineItem>`. The props are a union, so `actor="system"` can't take a `badge` (Figma: system events have no badge). Figma's Position=Last is `last:` (no line, 4px bottom padding), so there is no position prop. The actor sets the text color (user text/primary, system text/muted) and the marker (solid brand/default, or hollow border/strong on bg/surface). The rail is `aria-hidden`. As in Figma, items are 20px apart and the content keeps 20px of its own, so the line stops short of the next marker.
+- **Sub-pixel borders** compute to whole device pixels in Chromium (the 1.5px system marker reads 1px at 1x), so story tests shouldn't assert exact fractional border widths.
 - **No `any`, no `dark:` variants, no primitives in components.**
 
 ## Decisions
@@ -149,7 +152,7 @@ Display
 - [x] ListItem
 - [x] Card
 - [x] DescriptionList, with part Item (Stacked layout)
-- [ ] Timeline, with part Item (Position Middle | Last; Actor User | System)
+- [x] Timeline, with part Item
 - [ ] Chart, with parts Bar, Donut and LegendItem (hand-built SVG/CSS; replaces `recharts`)
 - [ ] EmptyState
 
