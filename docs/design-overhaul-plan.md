@@ -7,7 +7,7 @@ Branch: `design-overhaul`. Design decisions and rules live in the Figma file and
 
 ## Picking this up in a new session
 
-Read this file and CLAUDE.md first. **Next up: EmptyState**, then the rest of Phase 1 in order.
+Read this file and CLAUDE.md first. **Next up: Alert**, then the rest of Phase 1 in order.
 
 ### Workflow per component
 
@@ -40,7 +40,7 @@ Read this file and CLAUDE.md first. **Next up: EmptyState**, then the rest of Ph
 | MobileTopBar | 14:158 | MobileNav | 82:3 |
 | Screens | 4:4 | | |
 
-Done so far: Spinner 81:3, Button and IconButton 14:144, Input 14:145 (PasswordInput is Input plus the trailing slot), Textarea 49:111, Checkbox 39:3, FormField 14:146, Select 34:3, Badge 46:3, DatePicker 36:3, FileDropzone 49:132, Avatar 14:151, Stat 14:153, ListItem 48:6, Card 48:38, DescriptionList 49:179, Timeline 49:209, Chart 53:4 (as BarChart and DonutChart).
+Done so far: Spinner 81:3, Button and IconButton 14:144, Input 14:145 (PasswordInput is Input plus the trailing slot), Textarea 49:111, Checkbox 39:3, FormField 14:146, Select 34:3, Badge 46:3, DatePicker 36:3, FileDropzone 49:132, Avatar 14:151, Stat 14:153, ListItem 48:6, Card 48:38, DescriptionList 49:179, Timeline 49:209, Chart 53:4 (as BarChart and DonutChart), EmptyState 14:155, NavItem 14:152, PageHeader 57:3.
 
 ### Things learned so far
 
@@ -87,6 +87,13 @@ Done so far: Spinner 81:3, Button and IconButton 14:144, Input 14:145 (PasswordI
   - **BarChart:** bars in chart/single, scaled so the tallest fills 90% of the 160px plot (Figma's 144px), max 28px wide in equal `flex-1` columns, on four decorative chart/grid lines. Each bar is a `role="img"` named "{label}: {value}"; the plot is one tab stop with arrow keys, Home and End (roving tabindex). A hovered or focused bar shows its value above it in Caption/Medium (not designed in Figma; worth adding). `formatValue` sets how values read. Below 360px of chart width (`@container`), every other x label is hidden. Bars grow with `animate-grow-up` (new token), 30ms apart.
   - **DonutChart:** SVG circles with `pathLength={360}`, so dash lengths and offsets are degrees; rotated to start at 12 o'clock; each segment stops 1.7° short (Figma's gap). Series colors go in order, series-1 to series-5. The sweep is a mask circle with `animate-sweep` (new token). The mask needs `maskUnits="userSpaceOnUse"` and an explicit region: the default (stroke-less bounding box plus 10%) clips the ring's outer edge. The total counts up from 0 on mount via `useCountUp` (started from `null`), with an sr-only final copy. `total` overrides the sum. Outside 2 to 5 categories, it warns in dev.
   - **Deviation:** the legend draws its own 10px chart-series square instead of using Swatch, which is a 12px tone chip.
+- **EmptyState** takes `title` (Heading/H2; `titleAs` for the level, h2 by default), `description` (Body/Base text/muted, wrapping at 320px, about 2 lines) and `action` (a Primary Button, or a link styled as one). There's no icon: the component's Figma description says "No decorative icon", which overrides the page note about a 64px tile.
+- **NavItem** wraps react-router's `NavLink`: `<NavItem to icon level="top|sub" count? end?>Label</NavItem>`. NavLink sets `aria-current="page"`, and the styles key off that (`aria-[current=page]:`), so there's no `active` prop. Hover is `not-aria-[current=page]:hover:` so it doesn't cover the active background. The icon goes through AnimatedIcon (20px top, 16px sub), text/muted and text/nav-active when active. NavLink matches by prefix, so `/jobs` is active on `/jobs/active`; pass `end` where that's unwanted. Stories wrap it in a `MemoryRouter`.
+  - **Not done here:** the rail sliding to the new item on route change. It needs a single rail shared across the list, so it belongs to Sidebar (Phase 3).
+  - **Deviation to fix in Figma:** in Dark mode, tone/neutral/soft and bg/nav-active are both pine-800, so the count Badge loses its shape on the active row (the number still reads).
+- **PageHeader** is a `<header>`: `<PageHeader appearance="band|plain" title description? back={{ to, label }}? actions?>`. The title is the page's h1 (Heading/H1, Heading/H2 below md). `back` renders a router `Link` styled with `buttonVariants({ variant: 'ghost' })` plus the animated arrow-left, pulled left 16px so the arrow lines up with the title as in Figma. Below md the actions wrap under the title and the side padding drops to 16px (my choice; Figma only specifies 40px). The band's hairline takes 1px of its bottom padding (134px, as in Figma).
+  - **Not done here:** the sticky bottom bar for actions below md. That's the app shell's Bottom bar (Phase 3).
+  - **Untested:** the below-md layout. Story tests run at one viewport, and there's no viewport setup yet; check it at 390px when the screens are built.
 - **Sub-pixel borders** compute to whole device pixels in Chromium (the 1.5px system marker reads 1px at 1x), so story tests shouldn't assert exact fractional border widths.
 - **No `any`, no `dark:` variants, no primitives in components.**
 
@@ -158,11 +165,11 @@ Display
 - [x] DescriptionList, with part Item (Stacked layout)
 - [x] Timeline, with part Item
 - [x] Chart, built as two components: BarChart and DonutChart (with part ChartLegendItem); hand-built, replaces `recharts`
-- [ ] EmptyState
+- [x] EmptyState
 
 Navigation and layout
-- [ ] NavItem
-- [ ] PageHeader (band | plain)
+- [x] NavItem
+- [x] PageHeader (band | plain)
 
 Feedback and overlays
 - [ ] Alert (Danger | Warning | Info | Positive)
