@@ -8,7 +8,8 @@ import { tokensWithPrefix } from './tokens'
 const usage: Record<string, string> = {
   fast: 'Exits, color and hover changes',
   base: 'Menus, popovers, checkbox',
-  slow: 'Toasts entering, FLIP reflow, month slide',
+  slow: 'Dialogs opening, chart bars, month slide',
+  slower: 'Toasts entering and their FLIP reflow',
   bounce: 'Enters only: a small overshoot (about 6%), then settle',
   out: 'Non-bouncy enters, color fades',
   in: 'Exits. Never bounce on the way out',
@@ -93,7 +94,7 @@ export default meta
 
 export const Motion: StoryObj<typeof meta> = {
   play: async ({ canvas, canvasElement }) => {
-    await expect(durations.map((d) => d.value)).toEqual(['120ms', '200ms', '280ms'])
+    await expect(durations.map((d) => d.value)).toEqual(['120ms', '200ms', '280ms', '400ms'])
     await userEvent.click(canvas.getByRole('button', { name: 'Play' }))
     const dot = canvasElement.querySelector<HTMLElement>('[data-ease="bounce"]')!
     await expect(dot.style.transform).toBe('translateX(13.5rem)')
