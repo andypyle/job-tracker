@@ -14,6 +14,12 @@ importers:
 
   packages/frontend:
     dependencies:
+      '@fontsource-variable/atkinson-hyperlegible-next':
+        specifier: ^5.3.0
+        version: 5.3.0
+      '@fontsource/gabarito':
+        specifier: ^5.3.0
+        version: 5.3.0
       '@hookform/resolvers':
         specifier: ^3.9.0
         version: 3.10.0(react-hook-form@7.72.1(react@18.3.1))
@@ -458,6 +464,12 @@ packages:
     engines: {node: '>=18'}
     cpu: [x64]
     os: [win32]
+
+  '@fontsource-variable/atkinson-hyperlegible-next@5.3.0':
+    resolution: {integrity: sha512-UnLzNUy1RWoLDfydAatP4NaRm99X/WbQEph7q/PymJnCFIOOwKOx3pBmp5ys8trO0dM+CKGuJgeZP9fAR4mQpA==}
+
+  '@fontsource/gabarito@5.3.0':
+    resolution: {integrity: sha512-hpFHOvTBQx8OjPWcGMsTUVMNGhXjATebG1QLIYxxawKDkeskXjgwPD4v3LRsGBU4/8Za+odJiX/FmjCJ3mymcA==}
 
   '@hookform/resolvers@3.10.0':
     resolution: {integrity: sha512-79Dv+3mDF7i+2ajj7SkypSKHhl1cbln1OGavqrsF7p6mbUv11xpqpacPsGDCTRvCSjEEIez2ef1NveSVL3b0Ag==}
@@ -3310,6 +3322,10 @@ snapshots:
 
   '@esbuild/win32-x64@0.28.2':
     optional: true
+
+  '@fontsource-variable/atkinson-hyperlegible-next@5.3.0': {}
+
+  '@fontsource/gabarito@5.3.0': {}
 
   '@hookform/resolvers@3.10.0(react-hook-form@7.72.1(react@18.3.1))':
     dependencies:

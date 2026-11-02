@@ -23,6 +23,16 @@ Env templates are `packages/frontend/.env.example` and `backend/.env.example`. N
 - **TypeScript:** no `any` without a comment explaining why.
 - **Dark mode:** follow `prefers-color-scheme` with CSS custom properties. There is no theme toggle.
 
+## Styling and tokens
+
+- Tokens live in `packages/frontend/src/styles/tokens.css` and map 1:1 to the Figma variables: `color/bg/canvas` is `--color-bg-canvas`, so the utility is `bg-bg-canvas` (likewise `text-text-muted`, `border-border-subtle`, `bg-tone-info-soft`). Use semantic tokens only; primitives (`--pine-900`, etc.) are deliberately not utilities.
+- Semantic colors use `light-dark()`, so dark mode follows `color-scheme`. Never add `dark:` variants or a second set of dark values.
+- Each Figma text style is one utility: `text-heading-h1`, `text-body-small`, `text-label-small`, `text-caption-medium`, and so on. Headings and display styles also need `font-display`.
+- One shadow (`shadow-overlay`), 4px radius by default (`rounded-sm`), no pills. Motion: `ease-bounce` for enters, `ease-in` for exits, durations `duration-(--duration-fast|base|slow)`; reduced motion keeps opacity changes only.
+- New custom theme keys must also be registered in `src/lib/cn.ts`, or tailwind-merge may drop them.
+- Icons: `<Icon name="briefcase" />`, colored by `currentColor`. Add icons to `Icon.paths.ts` from the Figma Icons page.
+- Stories that matter in both modes should include a dark variant with `globals: { theme: 'dark' }`.
+
 ## Domain
 
 Statuses and how they change:
