@@ -31,6 +31,7 @@ Env templates are `packages/frontend/.env.example` and `backend/.env.example`. N
 - One shadow (`shadow-overlay`), 4px radius by default (`rounded-sm`), no pills. Motion: `ease-bounce` for enters, `ease-in` for exits, durations `duration-(--duration-fast|base|slow)`; reduced motion keeps opacity changes only.
 - New custom theme keys must also be registered in `src/lib/cn.ts`, or tailwind-merge may drop them.
 - Icons: `<Icon name="briefcase" />` is static, colored by `currentColor`; add icons to `Icon.paths.ts` from the Figma Icons page. Icons on interactive elements animate: `Button` and `IconButton` do it automatically through `AnimatedIcon` (react-useanimations, one dynamic import per icon). To animate a new icon, add it to `AnimatedIcon.animations.ts` and check its resting frame against the static glyph in the `MatchesStaticIcons` story. Don't animate icons on non-interactive elements.
+- Every story file starts with a `Default` story that shows the component with its default props (the plop template scaffolds one). Name the other stories after what they show.
 - Stories that matter in both modes should include a dark variant with `globals: { theme: 'dark' }`.
 
 ## Domain

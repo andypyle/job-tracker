@@ -14,7 +14,8 @@ const meta = {
 export default meta
 type Story = StoryObj<typeof meta>
 
-export const Small: Story = {
+/** Small (16px), the default size */
+export const Default: Story = {
   args: { size: 'sm' },
   play: async ({ canvas }) => {
     const status = canvas.getByRole('status')

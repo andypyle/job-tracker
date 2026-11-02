@@ -27,7 +27,8 @@ const meta = {
 export default meta
 type Story = StoryObj<typeof meta>
 
-export const Initials: Story = {
+/** Initials on avatar/bg, the fallback when there is no image */
+export const Default: Story = {
   play: async ({ canvas }) => {
     await expect(canvas.getByText('AC')).toBeInTheDocument()
   },

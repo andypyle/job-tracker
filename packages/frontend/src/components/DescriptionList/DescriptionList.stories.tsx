@@ -36,8 +36,8 @@ type Story = StoryObj<typeof meta>
 
 const items = (canvasElement: HTMLElement) => Array.from(canvasElement.querySelectorAll('dl > div'))
 
-/** Inline from 32rem: a 160px label column */
-export const Inline: Story = {
+/** Inline, from 32rem of list width: a 160px label column */
+export const Default: Story = {
   play: async ({ canvas, canvasElement }) => {
     await expect(canvas.getAllByRole('term')).toHaveLength(6)
     await expect(canvas.getAllByRole('definition')).toHaveLength(6)
@@ -79,7 +79,7 @@ export const NotSet: Story = {
 }
 
 export const InlineDark: Story = {
-  ...Inline,
+  ...Default,
   globals: { theme: 'dark' },
 }
 

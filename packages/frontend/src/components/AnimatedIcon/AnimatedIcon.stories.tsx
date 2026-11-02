@@ -33,7 +33,8 @@ type Story = StoryObj<typeof meta>
 const waitForAnimation = (root: HTMLElement, count = 1) =>
   waitFor(() => expect(root.querySelectorAll('[data-useanimations]')).toHaveLength(count))
 
-export const OnAButton: Story = {
+/** On a button, where animated icons belong */
+export const Default: Story = {
   play: async ({ canvas, canvasElement }) => {
     await waitForAnimation(canvasElement)
     await userEvent.hover(canvas.getByRole('button', { name: 'Back' }))

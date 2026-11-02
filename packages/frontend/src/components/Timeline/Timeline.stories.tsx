@@ -68,8 +68,8 @@ const rail = (item: Element) => item.firstElementChild as HTMLElement
 const marker = (item: Element) => rail(item).children[0] as HTMLElement
 const line = (item: Element) => rail(item).children[1] as HTMLElement
 
-/** Items with a badge are 84px; the last drops its line and is 48px */
-export const StatusHistory: Story = {
+/** A status history. Items with a badge are 84px; the last drops its line and is 48px. */
+export const Default: Story = {
   play: async ({ canvas, canvasElement }) => {
     await expect(canvas.getByRole('list')).toBeInTheDocument()
     await expect(canvas.getAllByRole('listitem')).toHaveLength(3)

@@ -21,7 +21,8 @@ const meta = {
 export default meta
 type Story = StoryObj<typeof meta>
 
-export const Primary: Story = {
+/** Primary, the default variant */
+export const Default: Story = {
   args: { variant: 'primary' },
   play: async ({ args, canvas }) => {
     const button = canvas.getByRole('button', { name: 'Add application' })
