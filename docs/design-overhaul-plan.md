@@ -7,7 +7,7 @@ Branch: `design-overhaul`. Design decisions and rules live in the Figma file and
 
 ## Picking this up in a new session
 
-Read this file and CLAUDE.md first. **Next up: Scrim**, then the rest of Phase 1 in order.
+Read this file and CLAUDE.md first. Phase 1 is done. **Next up: Phase 2** (backend and shared), then the rest of Phase 1 in order.
 
 ### Workflow per component
 
@@ -40,7 +40,7 @@ Read this file and CLAUDE.md first. **Next up: Scrim**, then the rest of Phase 1
 | MobileTopBar | 14:158 | MobileNav | 82:3 |
 | Screens | 4:4 | | |
 
-Done so far: Spinner 81:3, Button and IconButton 14:144, Input 14:145 (PasswordInput is Input plus the trailing slot), Textarea 49:111, Checkbox 39:3, FormField 14:146, Select 34:3, Badge 46:3, DatePicker 36:3, FileDropzone 49:132, Avatar 14:151, Stat 14:153, ListItem 48:6, Card 48:38, DescriptionList 49:179, Timeline 49:209, Chart 53:4 (as BarChart and DonutChart), EmptyState 14:155, NavItem 14:152, PageHeader 57:3, Alert 81:5545, Toast 31:3 (with Toaster).
+Done so far: Spinner 81:3, Button and IconButton 14:144, Input 14:145 (PasswordInput is Input plus the trailing slot), Textarea 49:111, Checkbox 39:3, FormField 14:146, Select 34:3, Badge 46:3, DatePicker 36:3, FileDropzone 49:132, Avatar 14:151, Stat 14:153, ListItem 48:6, Card 48:38, DescriptionList 49:179, Timeline 49:209, Chart 53:4 (as BarChart and DonutChart), EmptyState 14:155, NavItem 14:152, PageHeader 57:3, Alert 81:5545, Toast 31:3 (with Toaster), Dialog 49:3 (Scrim is its `::backdrop`).
 
 ### Things learned so far
 
@@ -103,6 +103,12 @@ Done so far: Spinner 81:3, Button and IconButton 14:144, Input 14:145 (PasswordI
   - **FLIP details:** leaving toasts FLIP too, so when a 4th pushes the oldest out it rises with the stack while it exits instead of jumping up first (the FLIP's added translate stacks on the exit's). Positions are layout positions (the section's top plus `offsetTop`), not `getBoundingClientRect`, which includes running animations and would restart an in-flight bounce as a 1px move.
   - **Checking motion frame by frame:** record each element's rect, opacity and computed `translate` in a `requestAnimationFrame` loop from Playwright against a static Storybook build. It found both bugs above.
   - **Story tests and motion:** axe measures text mid-fade as low contrast, so plays that leave toasts animating wait on `document.getAnimations()` before ending.
+- **Dialog** is a native `<dialog>` with `showModal()`: `<Dialog open onClose size="small|medium|large" role="dialog|alertdialog" title description? footer?>body</Dialog>`. The body varies, so it's children; the header and footer are props.
+  - **Controlled:** Esc (`cancel`, default prevented), the close button and a press on the scrim (the click's target is the `<dialog>` itself) all call `onClose`; it closes when `open` turns false, and the browser returns focus to the trigger. An alertdialog has no close button and ignores the scrim; put `autoFocus` on the safe action.
+  - **Motion is CSS only**, like the popovers: `open:` and `starting:open:` with `transition-discrete` on `display`/`overlay`, from `--dialog-y`/`--dialog-scale` (8px and 0.96; 100% and 1 for the sheet; 0 and 1 for reduced motion). The scrim is `backdrop:` utilities on the same pattern. Use `open:flex`, never `flex`, or the closed dialog shows (an author `display` beats the UA's `dialog:not([open])`). Add `border-0 p-0`: the UA gives `<dialog>` a border and padding.
+  - **Body:** `min-h-0 flex-1 overflow-y-auto`, padded 24px across and below (my choice; Figma's slot is full-bleed, so check against the AddApplication pattern). Scrolling shows the header's divider (transparent until then, so nothing shifts). While it overflows it's a tab stop, since axe requires keyboard access to a scrollable region with nothing focusable inside. Without children there's no body.
+  - **Page scroll:** `showModal()` makes the page inert but not still, so `base.css` has `:root:has(dialog:modal) { overflow: hidden }`.
+  - **Esc in story tests:** the browser fires `cancel` only for a trusted keypress, so the stories dispatch `cancel` directly.
 - **Sub-pixel borders** compute to whole device pixels in Chromium (the 1.5px system marker reads 1px at 1x), so story tests shouldn't assert exact fractional border widths.
 - **No `any`, no `dark:` variants, no primitives in components.**
 
@@ -183,8 +189,8 @@ Navigation and layout
 Feedback and overlays
 - [x] Alert (Danger | Warning | Info | Positive)
 - [x] Toast, plus Toaster and the `toast()` store
-- [ ] Scrim
-- [ ] Dialog:
+- [x] Scrim: not a component; it's the Dialog's `::backdrop` (bg/scrim plus the backdrop blur)
+- [x] Dialog:
   - sizes
   - a sheet below md
   - the Small alertdialog
