@@ -40,7 +40,7 @@ Read this file and CLAUDE.md first. Phases 1 and 2 are done. **Next up: Phase 3*
 | MobileTopBar | 14:158 | MobileNav | 82:3 |
 | Screens | 4:4 | | |
 
-Done so far: Spinner 81:3, Button and IconButton 14:144, Input 14:145 (PasswordInput is Input plus the trailing slot), Textarea 49:111, Checkbox 39:3, FormField 14:146, Select 34:3, Badge 46:3, DatePicker 36:3, FileDropzone 49:132, Avatar 14:151, Stat 14:153, ListItem 48:6, Card 48:38, DescriptionList 49:179, Timeline 49:209, Chart 53:4 (as BarChart and DonutChart), EmptyState 14:155, NavItem 14:152, PageHeader 57:3, Alert 81:5545, Toast 31:3 (with Toaster), Dialog 49:3 (Scrim is its `::backdrop`).
+Done so far: Spinner 81:3, Button and IconButton 14:144, Input 14:145 (PasswordInput is Input plus the trailing slot), Textarea 49:111, Checkbox 39:3, FormField 14:146, Select 34:3, Badge 46:3, DatePicker 36:3, FileDropzone 49:132, Avatar 14:151, Stat 14:153, ListItem 48:6, Card 48:38, DescriptionList 49:179, Timeline 49:209, Chart 53:4 (as BarChart and DonutChart), EmptyState 14:155, NavItem 14:152, PageHeader 57:3, Alert 81:5545, Toast 31:3 (with Toaster), Dialog 49:3 (Scrim is its `::backdrop`), MobileTopBar 14:158.
 
 ### Things learned so far
 
@@ -256,7 +256,9 @@ Built from the Figma Patterns pages:
   - Account: a decorative md Avatar with the user's initials, the name (Label/Base) and email (Caption), both truncating, and Sign out as a `<button>` styled with `navItemVariants()` with the animated log-out icon.
   - The brand isn't a link (Figma doesn't make it one).
   - **Testing motion:** the marker moves with the CSS `translate` property, so read `getComputedStyle(el).translate`, not `transform`. To see what happens frame by frame, record computed styles in a `requestAnimationFrame` loop from Playwright (that's how the flash was found).
-- [ ] MobileTopBar
+- [x] MobileTopBar
+  - `<MobileTopBar>` is a `<header>` (banner landmark) with the brand only, per the component description. The page note's "menu button opens the Sidebar as a drawer" is out of date: navigation is MobileNav's job, bottom left. The app shell shows it below md.
+  - The brand is Gabarito 18 on a 24px line, which no text style matches, so it uses `text-[1.125rem] leading-6 font-bold`.
 - [ ] MobileNav (the trigger, a panel in a `<dialog>`, staggered enter, focus returns to the trigger)
 - [ ] Bottom bar
 
