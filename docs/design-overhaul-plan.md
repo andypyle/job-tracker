@@ -7,7 +7,7 @@ Branch: `design-overhaul`. Design decisions and rules live in the Figma file and
 
 ## Picking this up in a new session
 
-Read this file and CLAUDE.md first. Phases 1 and 2 are done. **Next up: Phase 3** (shared domain components), in order.
+Read this file and CLAUDE.md first. Phases 1 to 3 are done. **Next up: Phase 4** (screens), in order; Login and Sign up are done, so the App shell is next.
 
 ### Workflow per component
 
@@ -270,14 +270,29 @@ Built from the Figma Patterns pages:
   - **Transition shorthand resets the delay:** a separate `[transition-delay:…]` next to a `[transition:…]` arbitrary class was dropped (every item faded in together). Put the delay inside the shorthand. Found by recording opacity per frame.
   - **Menu animation fixed:** useAnimations' `menu` ends on a burger bun, not an x. `menu` now maps to `menu2` (chosen over menu3 by look), which rests on the same three lines and ends on an x. Toggle icons need their end frame checked as well as their resting frame. Wait for the whole timeline before judging one: a screenshot taken mid-toggle once made menu2 look like it ended on a "+".
   - **Toggle speed:** a click-toggle plays the Lottie's whole timeline each way (not half), so the stock timings (menu2 2s, menu3 1.5s) felt slow next to the 280ms panel. Entries in `AnimatedIcon.animations.ts` can now set a default `speed` (a `speed` prop still overrides it); `menu` runs at 6.5×, about 250–300ms per morph, measured in the built Storybook.
-- [ ] Bottom bar
+- [x] Bottom bar: folded into the App shell (Phase 4), not a separate component
+  - Figma has no component page for it, only an 84px frame copied into each mobile screen. It holds the MobileNav trigger (`floating={false}`) and a full-width Primary "Add application" Button (16px sides, 12px gap, 44px tall, top-aligned at 13px).
+  - It appears on Dashboard, Jobs and Add application. Application detail and Delete have no bar; the trigger floats. The shell picks the version per route and owns the Add dialog the button opens.
 
 ## Phase 4: Screens
 
 Check each screen against its Figma frame, in light and dark, at 1440 and 390 wide.
 
-- [ ] Login, and Login error (keeps the email, clears the password, no field-level error)
-- [ ] Sign up, and Sign up error (errors on blur or submit; focus moves to the first invalid field)
+- [x] Login, and Login error (keeps the email, clears the password, no field-level error)
+  - **AuthLayout** (`src/components`, shared with Sign up) takes the form as `children`. It's a `<header>` brand panel and a `<main>` holding the form, capped at 400px. From lg they sit side by side: the panel is half the width up to 640px, with the logo, the Display/Hero message and the © line spread top to bottom (the year is the current one). Below lg the band stacks on top, with the message in Heading/H1 and no © line, as in the mobile frames. The panel is `[color-scheme:dark]`, like the other pine bands, so the logo mark comes out pine-100 with a pine-900 glyph.
+  - **Pages own their wiring:** `src/pages/LoginPage.tsx` exports `LoginScreen({ onSignIn })` (presentational; `onSignIn` throws an Error whose message the Alert shows) and `LoginPage`, which connects it to `useAuth().signIn` and goes to `/` on success. Its stories are `Screens/Login` in `src/pages/LoginPage.stories.tsx`. Sign up and the later screens should follow the same split.
+  - Supabase's `invalid_credentials` becomes Figma's "That email and password don’t match. Check them and try again."; other auth errors show their own message.
+  - **Validation:** zod, checked on submit (not on blur, so tabbing to "Create one" doesn't flash errors). An empty email or password, or a malformed email, gets a field error, and focus goes to the first one. A failed sign-in clears the password and focuses the danger Alert; the fields stay unmarked.
+  - **Pending:** the button reads "Signing in…" and is disabled. Figma has no pending state for it.
+  - Checked against Figma at 1440 (light, and error in dark) and 390 (error, light).
+- [x] Sign up, and Sign up error (errors on blur or submit; focus moves to the first invalid field)
+  - Same split as Login: `src/pages/RegisterPage.tsx` exports `SignUpScreen({ onSignUp })` and `RegisterPage` (the route stays `/register`). Stories are `Screens/Sign up`.
+  - `onSignUp(name, email, password)` resolves to a `SignUpResult`: `signed-in` (the page has already navigated to `/`), `check-email` or `email-taken`. Any other failure throws, and the message shows in a danger Alert that takes focus, as in Login.
+  - **Taken email** is Figma's field error on Email ("There’s already an account with this email. Sign in instead?"), which takes focus. `RegisterPage` reports it for Supabase's `user_already_exists`/`email_exists` and, with email confirmation on, for a returned user with no identities (Supabase's way of saying the email is taken). `useAuth().signUp` now returns `{ user, session, error }`.
+  - **Validation:** RHF and zod, `mode: 'onTouched'`. The password hint "Use at least 8 characters." turns into the error of the same text. zod 3 skips an object's refinements while any of its fields fails, so both password rules sit in one `superRefine` over plain strings, joined to the rest with `.and()`; that way "Passwords don’t match." shows even while the name is empty. Once Confirm password has been left (or the form submitted), editing Password rechecks the match.
+  - **Check your email** (not designed in Figma): with email confirmation on, the form gives way to a heading, the address and a Primary "Go to sign in" link, in the same AuthLayout. Focus moves to the heading. Worth designing in Figma.
+  - **Pending:** "Creating account…", disabled.
+  - Checked against Figma at 1440 (error, light) and 390 (error, light).
 - [ ] App shell (Sidebar at md and up; MobileTopBar, MobileNav and Bottom bar below md)
 - [ ] Dashboard ("Welcome, {first name}", 7 stats, two chart cards)
 - [ ] Jobs: Active (grouped by Interviewing, Offers and Applied; search; a toast on status change)

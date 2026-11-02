@@ -8,10 +8,17 @@ interface AuthState {
   loading: boolean
 }
 
+interface SignUpResult {
+  user: User | null
+  /** Null when Supabase wants the email confirmed first */
+  session: Session | null
+  error: AuthError | null
+}
+
 interface UseAuthReturn extends AuthState {
   signIn: (email: string, password: string) => Promise<{ error: AuthError | null }>
   /** Stores `fullName` in `user_metadata.full_name`; read it with `getDisplayName`. */
-  signUp: (fullName: string, email: string, password: string) => Promise<{ error: AuthError | null }>
+  signUp: (fullName: string, email: string, password: string) => Promise<SignUpResult>
   signOut: () => Promise<void>
 }
 
@@ -61,13 +68,13 @@ export function useAuth(): UseAuthReturn {
     fullName: string,
     email: string,
     password: string,
-  ): Promise<{ error: AuthError | null }> => {
-    const { error } = await supabase.auth.signUp({
+  ): Promise<SignUpResult> => {
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: { data: { full_name: fullName.trim() } },
     })
-    return { error }
+    return { user: data.user, session: data.session, error }
   }
 
   const signOut = async (): Promise<void> => {
