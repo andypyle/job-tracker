@@ -5,8 +5,9 @@ import { AppLayout } from './pages/AppLayout'
 import { LoginPage } from './pages/LoginPage'
 import { RegisterPage } from './pages/RegisterPage'
 import { DashboardPage } from './pages/DashboardPage'
-import { JobsPage } from './pages/JobsPage'
 import { ActiveJobsPage } from './pages/ActiveJobsPage'
+import { UnlikelyJobsPage } from './pages/UnlikelyJobsPage'
+import { RejectedJobsPage } from './pages/RejectedJobsPage'
 import { ApplicationDetailPage } from './pages/ApplicationDetailPage'
 
 // ---------------------------------------------------------------------------
@@ -62,9 +63,8 @@ export default function App() {
           <Route path="/jobs" element={<Navigate to="/jobs/active" replace />} />
 
           <Route path="/jobs/active" element={<ActiveJobsPage />} />
-
-          {/* /jobs/:status — e.g. /jobs/active, /jobs/rejected, /jobs/applied, /jobs/all */}
-          <Route path="/jobs/:status" element={<JobsPage />} />
+          <Route path="/jobs/unlikely" element={<UnlikelyJobsPage />} />
+          <Route path="/jobs/rejected" element={<RejectedJobsPage />} />
 
           {/* Application detail */}
           <Route path="/jobs/detail/:id" element={<ApplicationDetailPage />} />

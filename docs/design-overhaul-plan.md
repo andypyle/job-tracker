@@ -7,7 +7,7 @@ Branch: `design-overhaul`. Design decisions and rules live in the Figma file and
 
 ## Picking this up in a new session
 
-Read this file and CLAUDE.md first. Phases 1 to 3 are done. **Next up: Phase 4** (screens), in order; Login, Sign up, the App shell, the Dashboard, Jobs: Active and Jobs: Empty are done, so Jobs: Unlikely is next.
+Read this file and CLAUDE.md first. Phases 1 to 3 are done. **Next up: Phase 4** (screens), in order; Login, Sign up, the App shell, the Dashboard and all the Jobs lists are done, so the Add application dialog is next.
 
 ### Workflow per component
 
@@ -128,7 +128,7 @@ Done so far: Spinner 81:3, Button and IconButton 14:144, Input 14:145 (PasswordI
   - `<dialog>` with `showModal()` for Dialog, the alertdialog and the MobileNav panel. It gives us the top layer, an inert background, Esc and `::backdrop`.
   - The Popover API for the Select menu and the DatePicker calendar.
   - Keyboard handling (listbox and grid navigation) is ours to write and test in play functions.
-- **Unlikely logic stays as is.** The nightly job already moves Applied to Unlikely 14 days after `date_applied` (`backend/app/services/scheduler.py`). Cards show "No activity since {date_applied}". The Unlikely list sorts by `date_applied`, oldest first.
+- **Unlikely logic stays as is.** The nightly job already moves Applied to Unlikely 14 days after `date_applied` (`backend/app/services/scheduler.py`). Cards show "No activity since {date_applied}". The Unlikely list sorts by `date_applied`, newest first (changed from oldest first on 2026-11-02: the ones that only just went quiet are the likeliest to come back, and it matches the other lists).
 - **Rejected list includes Role Eliminated** (same as `useApplicationCounts` today). It reuses the Unlikely layout.
 - **Edit reuses the Add application dialog**, prefilled.
 - **Old code is replaced, not migrated.** The new components are built alongside the old ones. Pages switch over in Phase 4, and the old files are deleted in Phase 5.
@@ -323,8 +323,14 @@ Check each screen against its Figma frame, in light and dark, at 1440 and 390 wi
   - **None active** (everything is Unlikely or Rejected; not designed): EmptyState "No active applications" with the Add button.
   - **Not ours to fix here:** Avatar initials for a one-word company are one letter ("F" for Fieldnote); the Figma frame shows "FN". Worth deciding which is right.
   - Checked against Figma at 1440 (light, dark, empty) and 390 (light).
-- [ ] Jobs: Unlikely (one list, oldest first, explanatory header)
-- [ ] Jobs: Rejected (Unlikely layout; includes Role Eliminated)
+- [x] Jobs: Unlikely (one list, newest first, explanatory header)
+  - **Shared layout:** `src/pages/JobsListScreen.tsx` holds what the three Jobs lists share. `JobsListScreen({ title, description?, listName, applications, error?, empty, headerAction?, onAddApplication, children: (matches, entered) => rows })` draws the header (Add application from md, not on error), the search with its live count, the skeletons, the error Alert, the `empty` content and the "No matches" state. It keeps `useEnteredRows`. Also there: `ApplicationRows` (a `<ul>` of ApplicationCards) and `useStatusChange()` (the mutation from Active). Jobs: Active now uses it, and its stories passed unchanged.
+  - `src/pages/UnlikelyJobsPage.tsx` exports `UnlikelyJobsScreen` and `UnlikelyJobsPage`, routed at `/jobs/unlikely`. It shows one list (`aria-label="Unlikely applications"`), sorted with `newestFirst`. **Deviation (decided 2026-11-02):** Figma's frame is oldest first; update it to match. The header text is Figma's fixed line. A status change takes the row off the list; Undo brings it back, rising in.
+  - **Empty** (not designed): EmptyState "Nothing unlikely" with no action, since the header keeps Add application.
+  - Checked against Figma at 1440, light and dark.
+- [x] Jobs: Rejected (Unlikely layout; includes Role Eliminated)
+  - `src/pages/RejectedJobsPage.tsx`, routed at `/jobs/rejected`, newest first. Not designed: the header text ("Rejections and eliminated roles. Change a status if one comes back.") and the empty state ("No rejections"). Worth adding a frame in Figma.
+  - The old `JobsPage.tsx` no longer has a route; delete it in Phase 5.
 - [x] Jobs: Empty: part of Jobs: Active (`Empty` story). With no applications at all, the header says "Nothing tracked yet", has no action, and the EmptyState is centered as on the Dashboard.
 - [ ] Add application dialog (desktop dialog, mobile sheet, fetching state)
 - [ ] Edit application (same dialog, prefilled)
