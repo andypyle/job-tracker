@@ -24,6 +24,11 @@ export interface SelectProps<V extends string = string> {
   /** `field` looks like Input (the default); `badge` is the compact trigger for lists */
   appearance?: 'field' | 'badge'
   disabled?: boolean
+  /**
+   * While a change saves: looks disabled and ignores input, but keeps focus
+   * (a native `disabled` would drop it). Sets `aria-disabled` and `aria-busy`.
+   */
+  busy?: boolean
   /** Adds a hidden input, so the value submits with a native form */
   name?: string
   id?: string

@@ -33,6 +33,7 @@ function SelectInner<V extends string>(props: SelectProps<V>, ref: ForwardedRef<
     placeholder = 'Choose an option',
     appearance = 'field',
     disabled,
+    busy = false,
     name,
     className,
     'aria-label': ariaLabel,
@@ -97,6 +98,10 @@ function SelectInner<V extends string>(props: SelectProps<V>, ref: ForwardedRef<
     }
   }, [open, activeIndex])
 
+  useEffect(() => {
+    if (busy) setOpen(false)
+  }, [busy])
+
   const openAt = (index: number) => {
     setActiveIndex(index)
     setOpen(true)
@@ -117,6 +122,7 @@ function SelectInner<V extends string>(props: SelectProps<V>, ref: ForwardedRef<
   const onKeyDown = (event: KeyboardEvent<HTMLButtonElement>) => {
     const printable = event.key.length === 1 && !event.ctrlKey && !event.metaKey && !event.altKey
 
+    if (busy) return
     if (!open) {
       if (event.key === 'Enter' || event.key === ' ' || event.key === 'ArrowDown') {
         event.preventDefault()
@@ -188,9 +194,15 @@ function SelectInner<V extends string>(props: SelectProps<V>, ref: ForwardedRef<
     'aria-controls': listboxId,
     'aria-activedescendant': open && activeIndex >= 0 ? optionId(activeIndex) : undefined,
     disabled,
+    'aria-disabled': busy || undefined,
+    'aria-busy': busy || undefined,
     className,
     onKeyDown,
-    onClick: () => (open ? setOpen(false) : openAt(selectedIndex >= 0 ? selectedIndex : first)),
+    onClick: () => {
+      if (busy) return
+      if (open) setOpen(false)
+      else openAt(selectedIndex >= 0 ? selectedIndex : first)
+    },
     onBlur: () => {
       setOpen(false)
       onBlur?.()

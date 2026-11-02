@@ -211,7 +211,12 @@ Notes:
 ## Phase 3: Shared domain components
 
 Built from the Figma Patterns pages:
-- [ ] StatusSelect (Select badge appearance plus the tone map)
+- [x] StatusSelect (Select badge appearance plus the tone map)
+  - `<StatusSelect value onChange applicationName? aria-label? disabled?>`, options in Figma's menu order with `STATUS_TONES`. The label defaults to "Status: {applicationName}", so rows in a list have distinct names.
+  - It owns the pattern's neutral "Moved to {status}" toast with Undo (message: `applicationName`). Undo calls `onChange(previous)` and doesn't toast again.
+  - `onChange` may return a promise (pass `mutateAsync`): the new status shows at once and stays busy until the promise settles; then the toast shows. On failure the badge goes back with no toast, and reporting the error is the caller's job. The pending status is kept until `value` changes, so the badge doesn't flick back while the query refetches.
+  - **Deviation:** Figma's "disabled while saving" is the new Select `busy` prop: `aria-disabled` plus `aria-busy`, ignoring input, looking like disabled. A native `disabled` would drop focus mid-list for keyboard users.
+  - Stories use a `deferred()` helper for saves, since `Promise.withResolvers` isn't in the TS lib.
 - [ ] ApplicationCard (ListItem plus the trailing column; "No activity since" for Unlikely)
 - [ ] ApplicationForm:
   - field order and the two-column grid as designed

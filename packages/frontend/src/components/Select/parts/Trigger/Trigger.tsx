@@ -16,12 +16,14 @@ export const Trigger = forwardRef<HTMLButtonElement, TriggerProps>(function Trig
       className={cn(
         'group flex h-12 w-full cursor-pointer items-center gap-2 pr-3 pl-4 text-left outline-none',
         fieldFrame,
-        'enabled:hover:bg-bg-hover',
+        'enabled:not-aria-disabled:hover:bg-bg-hover',
         // Focus and open are 2px border/focus; error wins, so the problem stays visible
         'not-aria-invalid:focus:border-border-focus not-aria-invalid:focus:inset-ring-1 not-aria-invalid:focus:inset-ring-border-focus',
         'not-aria-invalid:aria-expanded:border-border-focus not-aria-invalid:aria-expanded:inset-ring-1 not-aria-invalid:aria-expanded:inset-ring-border-focus',
         'aria-invalid:border-feedback-error-strong aria-invalid:inset-ring-1 aria-invalid:inset-ring-feedback-error-strong',
         'disabled:cursor-default disabled:border-border-default disabled:bg-bg-subtle disabled:text-text-subtle',
+        // Busy while a change saves: looks disabled but keeps focus
+        'aria-disabled:cursor-default aria-disabled:bg-bg-subtle aria-disabled:text-text-subtle',
         className,
       )}
       {...props}

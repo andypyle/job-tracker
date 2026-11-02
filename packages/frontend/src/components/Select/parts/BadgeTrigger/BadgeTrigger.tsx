@@ -35,8 +35,8 @@ export const BadgeTrigger = forwardRef<HTMLButtonElement, BadgeTriggerProps>(fun
         focusRing,
         'aria-expanded:outline-2 aria-expanded:outline-border-focus',
         'before:absolute before:inset-x-0 before:-inset-y-1.5',
-        // Disabled while a change saves
-        'disabled:cursor-default disabled:opacity-50',
+        // Disabled, or busy while a change saves (aria-disabled keeps focus)
+        'disabled:cursor-default disabled:opacity-50 aria-disabled:cursor-default aria-disabled:opacity-50',
         className,
       )}
       {...props}

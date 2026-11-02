@@ -248,6 +248,22 @@ export const Disabled: Story = {
   },
 }
 
+/** While a change saves: looks disabled and ignores input, but keeps focus */
+export const Busy: Story = {
+  args: { busy: true, defaultValue: 'offer' },
+  play: async ({ canvas }) => {
+    const trigger = canvas.getByRole('combobox', { name: 'Status' })
+    await expect(trigger).toHaveAttribute('aria-busy', 'true')
+    await expect(trigger).toHaveAttribute('aria-disabled', 'true')
+    await expect(trigger).toBeEnabled()
+    await userEvent.click(trigger)
+    await expect(trigger).toHaveFocus()
+    await expect(trigger).toHaveAttribute('aria-expanded', 'false')
+    await userEvent.keyboard('{ArrowDown}')
+    await expect(trigger).toHaveAttribute('aria-expanded', 'false')
+  },
+}
+
 export const NativeForm: Story = {
   args: { name: 'status', defaultValue: 'applied' },
   render: (args) => (
