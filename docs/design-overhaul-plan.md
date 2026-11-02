@@ -7,7 +7,7 @@ Branch: `design-overhaul`. Design decisions and rules live in the Figma file and
 
 ## Picking this up in a new session
 
-Read this file and CLAUDE.md first. **Next up: Chart**, then the rest of Phase 1 in order.
+Read this file and CLAUDE.md first. **Next up: EmptyState**, then the rest of Phase 1 in order.
 
 ### Workflow per component
 
@@ -40,7 +40,7 @@ Read this file and CLAUDE.md first. **Next up: Chart**, then the rest of Phase 1
 | MobileTopBar | 14:158 | MobileNav | 82:3 |
 | Screens | 4:4 | | |
 
-Done so far: Spinner 81:3, Button and IconButton 14:144, Input 14:145 (PasswordInput is Input plus the trailing slot), Textarea 49:111, Checkbox 39:3, FormField 14:146, Select 34:3, Badge 46:3, DatePicker 36:3, FileDropzone 49:132, Avatar 14:151, Stat 14:153, ListItem 48:6, Card 48:38, DescriptionList 49:179, Timeline 49:209.
+Done so far: Spinner 81:3, Button and IconButton 14:144, Input 14:145 (PasswordInput is Input plus the trailing slot), Textarea 49:111, Checkbox 39:3, FormField 14:146, Select 34:3, Badge 46:3, DatePicker 36:3, FileDropzone 49:132, Avatar 14:151, Stat 14:153, ListItem 48:6, Card 48:38, DescriptionList 49:179, Timeline 49:209, Chart 53:4 (as BarChart and DonutChart).
 
 ### Things learned so far
 
@@ -83,6 +83,10 @@ Done so far: Spinner 81:3, Button and IconButton 14:144, Input 14:145 (PasswordI
 - **Story decorators nest:** a story's decorators wrap inside the meta's, they don't replace them. To vary a wrapper per story, read a story parameter in the meta decorator (`parameters.stacked` in the DescriptionList stories).
 - **Composable only where content varies.** Shells with children and parts (ListItem, Card, Dialog) are for components whose insides change from use to use. When the design fixes the structure, use props, with ReactNode props for slots. Timeline was first built with parts and then switched to props.
 - **Timeline** is an `<ol>` of `<TimelineItem actor="user|system" badge={<Badge/>} time="Oct 9, 2026 · 3:14 PM" dateTime="2026-10-09T15:14">event text</TimelineItem>`. The props are a union, so `actor="system"` can't take a `badge` (Figma: system events have no badge). Figma's Position=Last is `last:` (no line, 4px bottom padding), so there is no position prop. The actor sets the text color (user text/primary, system text/muted) and the marker (solid brand/default, or hollow border/strong on bg/surface). The rail is `aria-hidden`. As in Figma, items are 20px apart and the content keeps 20px of its own, so the line stops short of the next marker.
+- **Charts** are two components with a `data` array of `{ label, value }` and a required `label` (the screen-reader summary, on a `role="group"`):
+  - **BarChart:** bars in chart/single, scaled so the tallest fills 90% of the 160px plot (Figma's 144px), max 28px wide in equal `flex-1` columns, on four decorative chart/grid lines. Each bar is a `role="img"` named "{label}: {value}"; the plot is one tab stop with arrow keys, Home and End (roving tabindex). A hovered or focused bar shows its value above it in Caption/Medium (not designed in Figma; worth adding). `formatValue` sets how values read. Below 360px of chart width (`@container`), every other x label is hidden. Bars grow with `animate-grow-up` (new token), 30ms apart.
+  - **DonutChart:** SVG circles with `pathLength={360}`, so dash lengths and offsets are degrees; rotated to start at 12 o'clock; each segment stops 1.7° short (Figma's gap). Series colors go in order, series-1 to series-5. The sweep is a mask circle with `animate-sweep` (new token). The mask needs `maskUnits="userSpaceOnUse"` and an explicit region: the default (stroke-less bounding box plus 10%) clips the ring's outer edge. The total counts up from 0 on mount via `useCountUp` (started from `null`), with an sr-only final copy. `total` overrides the sum. Outside 2 to 5 categories, it warns in dev.
+  - **Deviation:** the legend draws its own 10px chart-series square instead of using Swatch, which is a 12px tone chip.
 - **Sub-pixel borders** compute to whole device pixels in Chromium (the 1.5px system marker reads 1px at 1x), so story tests shouldn't assert exact fractional border widths.
 - **No `any`, no `dark:` variants, no primitives in components.**
 
@@ -153,7 +157,7 @@ Display
 - [x] Card
 - [x] DescriptionList, with part Item (Stacked layout)
 - [x] Timeline, with part Item
-- [ ] Chart, with parts Bar, Donut and LegendItem (hand-built SVG/CSS; replaces `recharts`)
+- [x] Chart, built as two components: BarChart and DonutChart (with part ChartLegendItem); hand-built, replaces `recharts`
 - [ ] EmptyState
 
 Navigation and layout

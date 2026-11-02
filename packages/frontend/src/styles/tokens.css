@@ -211,6 +211,12 @@
   /* A new row rising into place (ListItem): from --rise below (8px, 0 for reduced motion) with
      a fade, over duration/base with ease/bounce. */
   --animate-rise-in: rise-in var(--duration-base) var(--ease-bounce) both;
+  /* Chart bars growing from the baseline over duration/slow with ease/bounce. Set
+     transform-origin to the bottom; BarChart staggers them 30ms apart. */
+  --animate-grow-up: grow-up var(--duration-slow) var(--ease-bounce) both;
+  /* A donut sweeping in clockwise over 600ms with ease/out, on a stroke with pathLength 360 and
+     stroke-dasharray "360 360" */
+  --animate-sweep: sweep 600ms var(--ease-out) both;
 
   @keyframes slide-in {
     from {
@@ -228,6 +234,16 @@
     from {
       opacity: 0;
       translate: 0 var(--rise, 8px);
+    }
+  }
+  @keyframes grow-up {
+    from {
+      scale: 1 0;
+    }
+  }
+  @keyframes sweep {
+    from {
+      stroke-dashoffset: 360;
     }
   }
   @keyframes pop-in {
