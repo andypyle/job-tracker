@@ -1,23 +1,17 @@
 import { useQuery } from '@tanstack/react-query'
 import { getApplications } from '../lib/api'
-
-/** Status values that constitute "rejected" for sidebar count purposes. */
-const REJECTED_STATUSES = new Set(['Rejected', 'Role Eliminated'])
+import { statusGroup, type StatusGroup } from '../lib/statusGroup'
 
 /**
- * Fetches all applications (no status filter) and returns counts split
- * by active vs. rejected.
+ * Fetches all applications (no status filter) and counts them by Jobs list:
+ * active (Applied, Interviewing, Offer), unlikely, and rejected (Rejected
+ * and Role Eliminated). See `statusGroup`.
  *
- * - "rejected" = status is "Rejected" OR "Role Eliminated"
- * - "active"   = everything else
- *
- * Uses queryKey ['applications', 'all'] so both the active and rejected views
- * share the same underlying cache entry, and React Query cache invalidations
- * on the ['applications'] base key will keep these counts up to date.
+ * Uses queryKey ['applications', 'all'] so every view shares the same cache
+ * entry, and invalidations on the ['applications'] base key keep the counts
+ * up to date.
  */
-export function useApplicationCounts(): {
-  active: number
-  rejected: number
+export function useApplicationCounts(): Record<StatusGroup, number> & {
   isLoading: boolean
 } {
   const { data, isLoading } = useQuery({
@@ -25,12 +19,10 @@ export function useApplicationCounts(): {
     queryFn: () => getApplications(),
   })
 
-  if (!data) {
-    return { active: 0, rejected: 0, isLoading }
+  const counts: Record<StatusGroup, number> = { active: 0, unlikely: 0, rejected: 0 }
+  for (const application of data ?? []) {
+    counts[statusGroup(application.status)] += 1
   }
 
-  const rejected = data.filter((a) => REJECTED_STATUSES.has(a.status)).length
-  const active = data.length - rejected
-
-  return { active, rejected, isLoading }
+  return { ...counts, isLoading }
 }

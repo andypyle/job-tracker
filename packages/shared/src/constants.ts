@@ -1,5 +1,25 @@
 import type { ApplicationStatus } from './types.js'
 
+/** The design system's color families (color/tone/*). Matches `Tone` in the frontend's `lib/tone.ts`. */
+export type StatusTone = 'neutral' | 'info' | 'warning' | 'positive' | 'danger'
+
+/** Badge appearances a status can take. */
+export type StatusAppearance = 'solid' | 'soft' | 'outline'
+
+/** How each status is drawn (Badge, StatusSelect, Swatch), from the Figma StatusSelect pattern. */
+export const STATUS_TONES: Record<
+  ApplicationStatus,
+  { tone: StatusTone; appearance: StatusAppearance }
+> = {
+  Applied: { tone: 'info', appearance: 'solid' },
+  Interviewing: { tone: 'warning', appearance: 'solid' },
+  Offer: { tone: 'positive', appearance: 'solid' },
+  Rejected: { tone: 'danger', appearance: 'soft' },
+  Unlikely: { tone: 'neutral', appearance: 'soft' },
+  'Role Eliminated': { tone: 'neutral', appearance: 'outline' },
+}
+
+/** @deprecated Legacy Tailwind palette classes. Use `STATUS_TONES`; removed with the old pages in Phase 5. */
 export const STATUS_COLORS: Record<
   ApplicationStatus,
   { bg: string; text: string }

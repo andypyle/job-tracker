@@ -10,7 +10,8 @@ interface AuthState {
 
 interface UseAuthReturn extends AuthState {
   signIn: (email: string, password: string) => Promise<{ error: AuthError | null }>
-  signUp: (email: string, password: string) => Promise<{ error: AuthError | null }>
+  /** Stores `fullName` in `user_metadata.full_name`; read it with `getDisplayName`. */
+  signUp: (fullName: string, email: string, password: string) => Promise<{ error: AuthError | null }>
   signOut: () => Promise<void>
 }
 
@@ -57,10 +58,15 @@ export function useAuth(): UseAuthReturn {
   }
 
   const signUp = async (
+    fullName: string,
     email: string,
     password: string,
   ): Promise<{ error: AuthError | null }> => {
-    const { error } = await supabase.auth.signUp({ email, password })
+    const { error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: { data: { full_name: fullName.trim() } },
+    })
     return { error }
   }
 

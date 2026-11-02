@@ -7,7 +7,7 @@ Branch: `design-overhaul`. Design decisions and rules live in the Figma file and
 
 ## Picking this up in a new session
 
-Read this file and CLAUDE.md first. Phase 1 is done. **Next up: Phase 2** (backend and shared), then the rest of Phase 1 in order.
+Read this file and CLAUDE.md first. Phases 1 and 2 are done. **Next up: Phase 3** (shared domain components), in order.
 
 ### Workflow per component
 
@@ -198,9 +198,15 @@ Feedback and overlays
 
 ## Phase 2: Backend and shared
 
-- [ ] Collect the name at sign-up in Supabase `user_metadata.full_name`. Existing users without a name fall back to the part of their email before the @.
-- [ ] Replace `STATUS_COLORS` in `@jobtracker/shared` with a map from status to tone (`neutral | info | warning | positive | danger`). Unlikely maps to neutral/soft.
-- [ ] Counts: Active excludes Unlikely, and Unlikely gets its own count (`useApplicationCounts`)
+- [x] Collect the name at sign-up in Supabase `user_metadata.full_name`. Existing users without a name fall back to the part of their email before the @.
+- [x] Replace `STATUS_COLORS` in `@jobtracker/shared` with a map from status to tone (`neutral | info | warning | positive | danger`). Unlikely maps to neutral/soft.
+- [x] Counts: Active excludes Unlikely, and Unlikely gets its own count (`useApplicationCounts`)
+
+Notes:
+- No backend changes were needed: the name lives in Supabase auth, and counts are computed on the client.
+- **Name:** `signUp(fullName, email, password)` in `useAuth` stores `full_name`. Read it with `getDisplayName(user)` / `getFirstName(user)` from `src/lib/userName.ts` (unit tested), which fall back to the email before the @. The old RegisterPage has a Full name field until the Sign up screen is rebuilt.
+- **Tones:** `STATUS_TONES` in `@jobtracker/shared` maps each status to `{ tone, appearance }`, from the StatusSelect page: Applied info/solid, Interviewing warning/solid, Offer positive/solid, Rejected danger/soft, Unlikely neutral/soft, Role Eliminated neutral/outline. Spread it into Badge or Select. `StatusTone` duplicates the frontend's `Tone` (shared doesn't import from the frontend); TypeScript catches a drift where they meet. `STATUS_COLORS` stays, marked deprecated, because the old ApplicationDetailPage uses it; it goes in Phase 5.
+- **Counts:** `statusGroup(status)` in `src/lib/statusGroup.ts` sorts statuses into the Jobs lists (active, unlikely, rejected); `useApplicationCounts` returns `{ active, unlikely, rejected, isLoading }`. The Jobs lists in Phase 4 should filter with `statusGroup` too. Until then, the old sidebar's Active count leaves out Unlikely while the old Active list still shows those applications.
 
 ## Phase 3: Shared domain components
 

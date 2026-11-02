@@ -4,6 +4,7 @@ import { useForm } from 'react-hook-form'
 import { useAuth } from '../hooks/useAuth'
 
 interface RegisterFormValues {
+  fullName: string
   email: string
   password: string
   confirmPassword: string
@@ -51,7 +52,7 @@ export function RegisterPage() {
 
   const onSubmit = async (values: RegisterFormValues) => {
     setServerError(null)
-    const { error } = await signUp(values.email, values.password)
+    const { error } = await signUp(values.fullName, values.email, values.password)
     if (error) {
       setServerError(error.message)
       return
@@ -167,6 +168,31 @@ export function RegisterPage() {
           )}
 
           <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-5">
+            {/* Full name */}
+            <div>
+              <label
+                htmlFor="register-full-name"
+                className="block text-sm font-medium mb-1.5"
+                style={{ color: 'var(--color-text)' }}
+              >
+                Full name
+              </label>
+              <input
+                id="register-full-name"
+                type="text"
+                autoComplete="name"
+                className={`form-input${errors.fullName ? ' is-error' : ''}`}
+                {...register('fullName', {
+                  validate: (value) => value.trim() !== '' || 'Name is required',
+                })}
+              />
+              {errors.fullName && (
+                <p className="mt-1.5 text-xs text-red-500" role="alert">
+                  {errors.fullName.message}
+                </p>
+              )}
+            </div>
+
             {/* Email */}
             <div>
               <label
