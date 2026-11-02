@@ -9,7 +9,8 @@ export function DescriptionListItem({ className, label, children, ...props }: De
       className={cn(
         // Stacked: label above value, 4px apart. 12px above and below, with the 1px
         // border/subtle divider inside the bottom padding as in Figma (stacked 72px, inline 48px).
-        'flex flex-col gap-1 border-b border-border-subtle pt-3 pb-[calc(--spacing(3)-1px)] break-words',
+        // The last item has no divider (the ApplicationDetail/Details pattern).
+        'flex flex-col gap-1 border-b border-border-subtle pt-3 pb-[calc(--spacing(3)-1px)] break-words last:border-b-0 last:pb-3',
         // Inline once the list is 32rem wide: a 160px label column, baselines aligned
         '@lg:flex-row @lg:items-baseline @lg:gap-4',
         className,

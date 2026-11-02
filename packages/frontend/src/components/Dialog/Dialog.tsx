@@ -109,7 +109,13 @@ export function Dialog({
       )}
 
       {footer && (
-        <div className="flex shrink-0 items-center justify-end gap-3 border-t border-border-divider px-6 py-4 max-md:[&>*]:flex-1">
+        <div
+          className={cn(
+            'flex shrink-0 items-center justify-end gap-3 border-t border-border-divider px-6 py-4',
+            // Full-width buttons on the sheet only
+            size !== 'small' && 'max-md:[&>*]:flex-1',
+          )}
+        >
           {footer}
         </div>
       )}

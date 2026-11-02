@@ -84,6 +84,7 @@ const formatters = {
     day: 'numeric',
     year: 'numeric',
   }),
+  full: new Intl.DateTimeFormat('en-US', { month: 'long', day: 'numeric', year: 'numeric' }),
   month: new Intl.DateTimeFormat('en-US', { month: 'long', year: 'numeric' }),
   short: new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' }),
 }
@@ -96,6 +97,8 @@ export const formatShortDate = (iso: ISODate, today: ISODate = todayISO()) =>
 export const formatMonthDay = (iso: ISODate) => formatters.short.format(fromISODate(iso))
 /** "Oct 21, 2026" */
 export const formatDisplayDate = (iso: ISODate) => formatters.display.format(fromISODate(iso))
+/** "October 21, 2026" */
+export const formatFullDate = (iso: ISODate) => formatters.full.format(fromISODate(iso))
 /** "Wednesday, October 21, 2026", for day buttons */
 export const formatLongDate = (iso: ISODate) => formatters.long.format(fromISODate(iso))
 /** "October 2026" */

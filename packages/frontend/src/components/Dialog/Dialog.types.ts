@@ -16,7 +16,10 @@ export interface DialogProps
    * `open` to false in response. Focus returns to the element that had it before opening.
    */
   onClose: () => void
-  /** 400, 560 (default) or 640px from md; a full-width sheet below md */
+  /**
+   * 400, 560 (default) or 640px from md. Below md, medium and large are a full-width sheet; small
+   * stays a centered dialog (up to 16px from the sides).
+   */
   size?: 'small' | 'medium' | 'large'
   /**
    * `alertdialog` for confirmations: no close button, and pressing the scrim does nothing. Put

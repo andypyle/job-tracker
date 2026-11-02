@@ -67,6 +67,15 @@ export const Plain: Story = {
   },
 }
 
+/**
+ * Where the 20px arrow glyph starts. Once its animation loads, the icon is a 4/3-size frame with
+ * the glyph inset by a sixth of 20px (AnimatedIcon), so measure from the middle.
+ */
+const glyphLeft = (link: HTMLElement) => {
+  const box = (link.firstElementChild as Element).getBoundingClientRect()
+  return box.left + (box.width - 20) / 2
+}
+
 /** A detail page: the back link above the title, lined up with it */
 export const WithBackLink: Story = {
   args: {
@@ -80,8 +89,24 @@ export const WithBackLink: Story = {
     await expect(back).toHaveAttribute('href', '/jobs')
     const title = canvas.getByRole('heading', { level: 1 })
     // The arrow lines up with the title's left edge
-    const arrow = back.querySelector('svg') as SVGElement
-    await expect(Math.round(arrow.getBoundingClientRect().left)).toBe(Math.round(title.getBoundingClientRect().left))
+    await expect(Math.round(glyphLeft(back))).toBe(Math.round(title.getBoundingClientRect().left))
+  },
+}
+
+/**
+ * Below md the back link's fill stops 8px short of the screen edge, and its text sits 24px under
+ * the top, as far as the title is below it
+ */
+export const WithBackLinkPhone: Story = {
+  ...WithBackLink,
+  globals: { viewport: { value: 'phone' } },
+  play: async ({ canvas, canvasElement }) => {
+    const back = canvas.getByRole('link', { name: 'Back to jobs' })
+    const title = canvas.getByRole('heading', { level: 1 })
+    await expect(Math.round(glyphLeft(back))).toBe(Math.round(title.getBoundingClientRect().left))
+    const header = canvasElement.querySelector('header') as HTMLElement
+    await expect(back.getBoundingClientRect().left - header.getBoundingClientRect().left).toBe(8)
+    await expect(getComputedStyle(header).paddingTop).toBe('12px')
   },
 }
 

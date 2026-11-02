@@ -170,16 +170,18 @@ function useEnteredRows(applications: Application[] | undefined): ReadonlySet<st
 }
 
 /**
- * Saves a status change from a Jobs list. It settles once the lists have refetched, so the row
- * moves as StatusSelect's toast appears; a failure shows a danger toast.
+ * Saves a status change from a Jobs list or Application detail. It settles once the lists and
+ * the application have refetched, so the row moves (or the history grows) as StatusSelect's
+ * toast appears; a failure shows a danger toast.
  */
 export function useStatusChange(): StatusChangeHandler {
   const queryClient = useQueryClient()
   const { mutateAsync } = useMutation({
     mutationFn: ({ id, status }: { id: string; status: ApplicationStatus }) => updateApplication(id, { status }),
-    onSuccess: () =>
+    onSuccess: (_, { id }) =>
       Promise.all([
         queryClient.invalidateQueries({ queryKey: ['applications'] }),
+        queryClient.invalidateQueries({ queryKey: ['application', id] }),
         queryClient.invalidateQueries({ queryKey: ['timeline-stats'] }),
       ]),
     onError: (error, { status }) =>

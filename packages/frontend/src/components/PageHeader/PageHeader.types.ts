@@ -14,8 +14,9 @@ export interface PageHeaderProps
   /** A ghost link with a left arrow above the title, e.g. `{ to: '/jobs', label: 'Back to jobs' }` */
   back?: { to: string; label: string }
   /**
-   * Up to two Buttons (a Secondary, then at most one Primary per page), 12px apart. Bottom-aligned
-   * beside the title from md, under it below md.
+   * Up to two Buttons (a Secondary, then at most one Primary per page), 12px apart. From md they're
+   * bottom-aligned beside the title and description, 24px away; below md the title takes the full
+   * width and they sit beside the description, 16px away.
    */
   actions?: ReactNode
 }

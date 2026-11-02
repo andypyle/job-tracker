@@ -223,6 +223,19 @@ export const AlertDialog: Story = {
   },
 }
 
+/** Below md a small dialog stays centered, 16px from the sides, with its buttons at the end */
+export const AlertDialogPhone: Story = {
+  ...AlertDialog,
+  globals: { viewport: { value: 'phone' } },
+  play: async ({ canvas, canvasElement }) => {
+    await userEvent.click(canvas.getByRole('button', { name: 'Delete' }))
+    const dialog = await page(canvasElement).findByRole('alertdialog')
+    await expect(getComputedStyle(dialog).width).toBe('358px')
+    await expect(getComputedStyle(dialog).borderBottomLeftRadius).not.toBe('0px')
+    await expect(getComputedStyle(within(dialog).getByRole('button', { name: 'Cancel' })).flexGrow).toBe('0')
+  },
+}
+
 export const Dark: Story = {
   globals: { theme: 'dark' },
   play: async ({ canvas, canvasElement }) => {
