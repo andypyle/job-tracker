@@ -7,7 +7,7 @@ Branch: `design-overhaul`. Design decisions and rules live in the Figma file and
 
 ## Picking this up in a new session
 
-Read this file and CLAUDE.md first. **Next up: Card**, then the rest of Phase 1 in order.
+Read this file and CLAUDE.md first. **Next up: DescriptionList**, then the rest of Phase 1 in order.
 
 ### Workflow per component
 
@@ -40,7 +40,7 @@ Read this file and CLAUDE.md first. **Next up: Card**, then the rest of Phase 1 
 | MobileTopBar | 14:158 | MobileNav | 82:3 |
 | Screens | 4:4 | | |
 
-Done so far: Spinner 81:3, Button and IconButton 14:144, Input 14:145 (PasswordInput is Input plus the trailing slot), Textarea 49:111, Checkbox 39:3, FormField 14:146, Select 34:3, Badge 46:3, DatePicker 36:3, FileDropzone 49:132, Avatar 14:151, Stat 14:153, ListItem 48:6.
+Done so far: Spinner 81:3, Button and IconButton 14:144, Input 14:145 (PasswordInput is Input plus the trailing slot), Textarea 49:111, Checkbox 39:3, FormField 14:146, Select 34:3, Badge 46:3, DatePicker 36:3, FileDropzone 49:132, Avatar 14:151, Stat 14:153, ListItem 48:6, Card 48:38.
 
 ### Things learned so far
 
@@ -78,6 +78,7 @@ Done so far: Spinner 81:3, Button and IconButton 14:144, Input 14:145 (PasswordI
 - **Row height:** Figma's 80px row has 16px padding, but its three text lines (62px) overflow it, so the row is `min-h-20` with `py-2` and centered content: 80px either way.
 - **Deviation:** a selected row's subtitle and meta are text/primary, because text/muted on bg/nav-active is 3.4:1 in Dark mode. Also in Dark mode, avatar/bg and bg/nav-active are both pine-800, so an initials avatar blends into a selected row. Both are worth fixing in Figma.
 - **Testing hover and overlays:** `userEvent.hover` doesn't trigger CSS `:hover` (check the class instead), and `userEvent.click(el)` skips hit testing, so to test what a pointer lands on, click `document.elementFromPoint` at the element's center.
+- **Card** is composable too, not Figma's `title`/`action` props: `<Card padding="default|flush"><CardHeader><CardTitle>…</CardTitle><Button /></CardHeader>{body}</Card>`. It's a `<section>`; `CardTitle` (an h2 by default, `as` for h3/h4, always Heading/H3) takes an id from `Card.context.ts` and reports itself, so `aria-labelledby` only appears when there is a title. `CardHeader` reads the padding from context: flush adds the padding and the border/subtle divider, with the divider taking 1px of the bottom padding so the header is Figma's 60px.
 - **No `any`, no `dark:` variants, no primitives in components.**
 
 ## Decisions
@@ -144,7 +145,7 @@ Display
 - [x] Avatar (falls back to initials when the image is missing or broken)
 - [x] Stat
 - [x] ListItem
-- [ ] Card
+- [x] Card
 - [ ] DescriptionList, with part Item (`divide-y`, Stacked layout)
 - [ ] Timeline, with part Item (Position Middle | Last; Actor User | System)
 - [ ] Chart, with parts Bar, Donut and LegendItem (hand-built SVG/CSS; replaces `recharts`)
