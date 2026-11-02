@@ -5,6 +5,52 @@ https://www.figma.com/design/ajjKIbesu4oY79EfQIX7Ov/JobTracker
 
 Branch: `design-overhaul`. Design decisions and rules live in the Figma file and in the design notes. This file tracks the build.
 
+## Picking this up in a new session
+
+Read this file and CLAUDE.md first. **Next up: Phase 1 inputs** (Input, PasswordInput, Textarea, Checkbox, FormField), then the rest of Phase 1 in order.
+
+### Workflow per component
+
+1. Load the `figma:figma-design-to-code` skill, call `create_session` for file key `ajjKIbesu4oY79EfQIX7Ov`, then `get_metadata` on the component's page (IDs below) to find the component set, and `get_design_context` on it. Its "Component descriptions" are the spec: sizes, states, motion, a11y.
+2. Scaffold with plop (CLAUDE.md), then adapt the reference code to our tokens and components. Reuse `Icon`/`AnimatedIcon`, `focusRing` and `colorTransition` from `src/lib/classes.ts`, and `cn()`.
+3. Stories with play functions, plus a dark story (`globals: { theme: 'dark' }`).
+4. `pnpm exec tsc --noEmit` and `pnpm test` from `packages/frontend`.
+5. Compare visually: `pnpm build-storybook -o <tmp>/sb --quiet`, then `node scripts/screenshot-stories.mjs <tmp>/sb <tmp> <story-id>...`, against `get_screenshot` of the Figma component set (the component pages also have a "Light and dark" frame).
+6. Tick the box here. Commit at the end of each batch when the user says so.
+
+### Figma page IDs
+
+| Page | ID | Page | ID |
+| --- | --- | --- | --- |
+| Foundations | 4:2 | Icons | 14:143 |
+| Input | 14:145 | Textarea | 49:111 |
+| Select | 34:3 | DatePicker | 36:3 |
+| Checkbox | 39:3 | FileDropzone | 49:132 |
+| FormField | 14:146 | Badge | 46:3 |
+| Avatar | 14:151 | Stat | 14:153 |
+| ListItem | 48:6 | Card | 48:38 |
+| DescriptionList | 49:179 | Timeline | 49:209 |
+| Chart | 53:4 | NavItem | 14:152 |
+| PageHeader | 57:3 | EmptyState | 14:155 |
+| Alert | 81:5545 | Toast | 31:3 |
+| Dialog | 49:3 | Utilities | 48:3 |
+| ApplicationCard | 14:154 | StatusSelect | 14:148 |
+| AddApplication | 57:54 | ApplicationDetail | 59:2229 |
+| Charts | 14:156 | Sidebar | 14:157 |
+| MobileTopBar | 14:158 | MobileNav | 82:3 |
+| Screens | 4:4 | | |
+
+Done so far: Spinner 81:3, Button and IconButton 14:144.
+
+### Things learned so far
+
+- **Password toggle:** the `eye` animation is useAnimations `visibility`, a toggle. Its static states run eye-off then eye, so check which `active` value shows which glyph before wiring PasswordInput (the spec: `eye` while hidden, `eye-off` while visible). The Icons page also has static `eye` and `eye-off`.
+- **Toasts and the pine band render in Dark mode** (per the IconButton spec). With `light-dark()` tokens that's just `[color-scheme:dark]` on the element.
+- **Color inheritance with local color-scheme:** `color` is resolved where it's set, so an element that sets `color-scheme` must also set its own text color (`text-text-primary`), or it inherits the outer mode's color.
+- **Vite reloads:** the first test run after adding a new dependency can fail with "Vite unexpectedly reloaded a test". Rerun; if it keeps happening, add the dependency to `optimizeDeps.include` in `vite.config.ts`.
+- **Trash icon:** stays animated by choice, though its resting lid differs slightly from the Figma glyph.
+- **No `any`, no `dark:` variants, no primitives in components.**
+
 ## Decisions
 
 - **Patterns are a reference, not a code layer.** The Figma Patterns pages guide the screen builds. A pattern that several screens reuse becomes an ordinary component in `src/components`:
