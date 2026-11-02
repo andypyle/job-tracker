@@ -7,7 +7,8 @@ import { getApplication, deleteApplication } from '../lib/api'
 import { useMediaQuery } from '../hooks/useMediaQuery'
 import { StatusBadge } from '../components/StatusBadge'
 import { CompanyAvatar } from '../components/CompanyAvatar'
-import { ApplicationModal } from '../components/ApplicationModal'
+import { ApplicationDialog } from '../components/ApplicationDialog/ApplicationDialog'
+import { useSaveApplication } from '../hooks/useSaveApplication'
 
 // ---------------------------------------------------------------------------
 // Skeleton loader — mimics the detail layout while fetching
@@ -322,6 +323,7 @@ export function ApplicationDetailPage() {
   const queryClient = useQueryClient()
 
   const [editOpen, setEditOpen] = useState(false)
+  const saveApplication = useSaveApplication()
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [deleteError, setDeleteError] = useState('')
@@ -371,11 +373,6 @@ export function ApplicationDetailPage() {
   }
 
   // ── Edit success ─────────────────────────────────────────────────────────
-  function handleEditSuccess() {
-    queryClient.invalidateQueries({ queryKey: ['application', id] })
-    queryClient.invalidateQueries({ queryKey: ['applications'] })
-    setEditOpen(false)
-  }
 
   // ── Loading state ────────────────────────────────────────────────────────
   if (isLoading) {
@@ -614,11 +611,14 @@ export function ApplicationDetailPage() {
       </div>
 
       {/* Edit modal */}
-      <ApplicationModal
-        isOpen={editOpen}
+      <ApplicationDialog
+        open={editOpen}
         application={application}
-        onSuccess={handleEditSuccess}
         onClose={() => setEditOpen(false)}
+        onSubmit={async (values) => {
+          await saveApplication(values, application)
+          setEditOpen(false)
+        }}
       />
     </div>
   )

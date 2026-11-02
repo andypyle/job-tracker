@@ -7,7 +7,7 @@ Branch: `design-overhaul`. Design decisions and rules live in the Figma file and
 
 ## Picking this up in a new session
 
-Read this file and CLAUDE.md first. Phases 1 to 3 are done. **Next up: Phase 4** (screens), in order; Login, Sign up, the App shell, the Dashboard and all the Jobs lists are done, so the Add application dialog is next.
+Read this file and CLAUDE.md first. Phases 1 to 3 are done. **Next up: Phase 4** (screens), in order; Login, Sign up, the App shell, the Dashboard, all the Jobs lists and the Add/Edit dialog are done, so Application detail and the Delete alertdialog are next (one batch).
 
 ### Workflow per component
 
@@ -332,8 +332,20 @@ Check each screen against its Figma frame, in light and dark, at 1440 and 390 wi
   - `src/pages/RejectedJobsPage.tsx`, routed at `/jobs/rejected`, newest first. Not designed: the header text ("Rejections and eliminated roles. Change a status if one comes back.") and the empty state ("No rejections"). Worth adding a frame in Figma.
   - The old `JobsPage.tsx` no longer has a route; delete it in Phase 5.
 - [x] Jobs: Empty: part of Jobs: Active (`Empty` story). With no applications at all, the header says "Nothing tracked yet", has no action, and the EmptyState is centered as on the Dashboard.
-- [ ] Add application dialog (desktop dialog, mobile sheet, fetching state)
-- [ ] Edit application (same dialog, prefilled)
+- [x] Add application dialog (desktop dialog, mobile sheet, fetching state)
+- [x] Edit application (same dialog, prefilled)
+  - **ApplicationDialog** (`src/components`) is presentational: `<ApplicationDialog open onClose application? onSubmit fetchDetails?>`, a large Dialog around ApplicationForm with Cancel and the submit button in the footer. With `application` it's Edit. The fetching state is ApplicationForm's own spinner.
+  - **Each opening remounts the form** (a key bumped when `open` turns true), so Add starts blank and a cancelled Edit drops its changes. The form stays mounted while closed, so the exit motion still shows it.
+  - **Saving:** while `onSubmit`'s promise is pending, the submit button reads "Saving…", both buttons are disabled, and Esc, the close button and the scrim are ignored. The caller closes it after the promise resolves. A throw shows ApplicationForm's Alert.
+  - **Wiring:** `saveApplication(values, existing?)` in `src/lib/saveApplication.ts` (unit tested) creates or updates, then uploads or deletes the files. A failed create or update throws. A failed file doesn't throw, because saving again would create the application twice; it comes back in `failedFiles`. `useSaveApplication()` (`src/hooks`) calls it, waits for `['applications']`, `['application', id]` and `['timeline-stats']` to refetch, then toasts. AppLayout uses it for Add. The old ApplicationDetailPage uses it for Edit until that page is rebuilt. `ApplicationModal` is no longer used, except by the unrouted `JobsPage`; delete both in Phase 5.
+  - **Not designed:**
+    - Edit's copy: the title is "Edit application", there's no description, and the button reads "Save changes".
+    - The success toast: positive, "Application added" or "Changes saved", with "{title} at {company}".
+    - The file failure toast: warning, "Couldn’t update the résumé", "The application is saved. Edit it to try the file again."
+    - The pending label "Saving…".
+    Worth adding to Figma.
+  - **Story tests:** wait only for finite animations before ending a play (`settle()` in the stories filters out `iterations: Infinity`), or the Spinner's endless spin times the test out.
+  - Checked against Figma at 1440 (Add light, Edit dark) and 390 (light).
 - [ ] Application detail (Details and Status history cards, low-emphasis Delete)
 - [ ] Delete application alertdialog
 

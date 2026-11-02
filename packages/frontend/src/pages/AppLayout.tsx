@@ -1,10 +1,10 @@
 import { useState } from 'react'
 import { Outlet, useMatch, useNavigate, useOutletContext } from 'react-router-dom'
-import { useQueryClient } from '@tanstack/react-query'
 import { AppShell } from '../components/AppShell/AppShell'
-import { ApplicationModal } from '../components/ApplicationModal'
+import { ApplicationDialog } from '../components/ApplicationDialog/ApplicationDialog'
 import { useApplicationCounts } from '../hooks/useApplicationCounts'
 import { useAuth } from '../hooks/useAuth'
+import { useSaveApplication } from '../hooks/useSaveApplication'
 import { getDisplayName } from '../lib/userName'
 
 interface AppLayoutContext {
@@ -24,7 +24,7 @@ export function useAddApplication() {
 export function AppLayout() {
   const { user, signOut } = useAuth()
   const navigate = useNavigate()
-  const queryClient = useQueryClient()
+  const saveApplication = useSaveApplication()
   const { isLoading, ...counts } = useApplicationCounts()
   const onDetail = useMatch('/jobs/detail/:id') !== null
   const [adding, setAdding] = useState(false)
@@ -41,13 +41,12 @@ export function AppLayout() {
       onAddApplication={onDetail ? undefined : openAddApplication}
     >
       <Outlet context={{ openAddApplication } satisfies AppLayoutContext} />
-      {/* The old modal until the Add application dialog is rebuilt */}
-      <ApplicationModal
-        isOpen={adding}
+      <ApplicationDialog
+        open={adding}
         onClose={() => setAdding(false)}
-        onSuccess={() => {
+        onSubmit={async (values) => {
+          await saveApplication(values)
           setAdding(false)
-          queryClient.invalidateQueries({ queryKey: ['applications'] })
         }}
       />
     </AppShell>
