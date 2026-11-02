@@ -22,6 +22,14 @@ const preview: Preview = {
     },
     // The canvas background comes from color/bg/canvas via base.css, so it follows the theme
     backgrounds: { disabled: true },
+    // The Figma frame sizes. A story picks one with `globals: { viewport: { value: 'phone' } }`;
+    // story tests resize the browser to match, so breakpoints apply in tests too.
+    viewport: {
+      options: {
+        phone: { name: 'Phone (390)', styles: { width: '390px', height: '844px' }, type: 'mobile' },
+        desktop: { name: 'Desktop (1440)', styles: { width: '1440px', height: '900px' }, type: 'desktop' },
+      },
+    },
     a11y: {
       // 'error' fails the story test on any axe violation; override per story with 'todo' or 'off'
       test: 'error',

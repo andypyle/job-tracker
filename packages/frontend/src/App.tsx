@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { useAuth } from './hooks/useAuth'
-import { Layout } from './components/Layout'
+import { Spinner } from './components/Spinner/Spinner'
+import { AppLayout } from './pages/AppLayout'
 import { LoginPage } from './pages/LoginPage'
 import { RegisterPage } from './pages/RegisterPage'
 import { DashboardPage } from './pages/DashboardPage'
@@ -12,34 +13,8 @@ import { ApplicationDetailPage } from './pages/ApplicationDetailPage'
 // ---------------------------------------------------------------------------
 function FullScreenSpinner() {
   return (
-    <div
-      className="min-h-screen flex items-center justify-center"
-      style={{ backgroundColor: 'var(--color-background)' }}
-      aria-label="Loading"
-    >
-      <svg
-        className="animate-spin w-8 h-8"
-        xmlns="http://www.w3.org/2000/svg"
-        fill="none"
-        viewBox="0 0 24 24"
-        aria-hidden="true"
-      >
-        <circle
-          className="opacity-25"
-          cx="12"
-          cy="12"
-          r="10"
-          stroke="currentColor"
-          strokeWidth="4"
-          style={{ color: 'var(--color-border)' }}
-        />
-        <path
-          className="opacity-75"
-          fill="currentColor"
-          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
-          style={{ color: 'var(--color-primary)' }}
-        />
-      </svg>
+    <div className="flex min-h-dvh items-center justify-center bg-bg-canvas text-text-muted">
+      <Spinner size="md" label="Loading" />
     </div>
   )
 }
@@ -72,11 +47,11 @@ export default function App() {
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
 
-        {/* Protected routes — wrapped in Layout (sidebar shell) */}
+        {/* Protected routes, inside the app shell */}
         <Route
           element={
             <ProtectedRoute>
-              <Layout />
+              <AppLayout />
             </ProtectedRoute>
           }
         >

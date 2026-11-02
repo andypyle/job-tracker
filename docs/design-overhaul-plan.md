@@ -7,7 +7,7 @@ Branch: `design-overhaul`. Design decisions and rules live in the Figma file and
 
 ## Picking this up in a new session
 
-Read this file and CLAUDE.md first. Phases 1 to 3 are done. **Next up: Phase 4** (screens), in order; Login and Sign up are done, so the App shell is next.
+Read this file and CLAUDE.md first. Phases 1 to 3 are done. **Next up: Phase 4** (screens), in order; Login and Sign up are done, and so is the App shell, so the Dashboard is next.
 
 ### Workflow per component
 
@@ -293,7 +293,14 @@ Check each screen against its Figma frame, in light and dark, at 1440 and 390 wi
   - **Check your email** (not designed in Figma): with email confirmation on, the form gives way to a heading, the address and a Primary "Go to sign in" link, in the same AuthLayout. Focus moves to the heading. Worth designing in Figma.
   - **Pending:** "Creating account…", disabled.
   - Checked against Figma at 1440 (error, light) and 390 (error, light).
-- [ ] App shell (Sidebar at md and up; MobileTopBar, MobileNav and Bottom bar below md)
+- [x] App shell (Sidebar at md and up; MobileTopBar, MobileNav and Bottom bar below md)
+  - **AppShell** (`src/components`) is presentational: `<AppShell counts? user onSignOut onAddApplication?>{page}</AppShell>`. The page scrolls as a whole: the Sidebar is `sticky` at the viewport's height from md, and `<main id="main">` holds the page. Below md come the MobileTopBar and then, with `onAddApplication`, the fixed Bottom bar (MobileNav with `floating={false}` plus a full-width Primary "Add application"). Without it the trigger floats. It renders the one `<Toaster />`.
+  - **Bottom bar:** Figma's 84px, with the top border taking 1px of the 12px top padding, and 28px below, or the safe area if that's more. `<main>` gets the same bottom padding below md, so the end of the page clears the bar. `index.html` now has `viewport-fit=cover`, so `env(safe-area-inset-*)` works (MobileNav and Toaster already used it).
+  - **Toasts below md** sit 16px above the Bottom bar, or above the floating trigger. Figma doesn't show this; at 16px from the edge they covered both.
+  - **Skip link** (not in Figma): "Skip to content" is the first Tab stop, visible on focus. It focuses `<main>` from a click handler rather than following `#main`, which keeps the URL clean and doesn't navigate Vitest's test iframe (following it closed the browser connection).
+  - **Wiring:** `src/pages/AppLayout.tsx` is the protected route element. It passes `useApplicationCounts()` (none while loading), `getDisplayName(user)` and sign-out (then `/login`), and leaves out `onAddApplication` on `/jobs/detail/:id`. It owns the Add dialog; pages open it with `useAddApplication()` (Outlet context), e.g. from a PageHeader action. **For now it renders the old `ApplicationModal`**; swap in the new dialog when Add application is built. The old `Layout.tsx` is unused, to be deleted in Phase 5. The auth loading screen uses `Spinner`.
+  - **Viewports in story tests:** `.storybook/preview.tsx` registers `phone` (390×844) and `desktop` (1440×900). `globals: { viewport: { value: 'phone' } }` resizes the test browser too (addon-vitest calls `page.viewport`), so breakpoints can be tested now; this resolves the PageHeader "untested below md" note. Hidden elements drop out of `getByRole`: at desktop, `getByRole('banner')` found the PageHeader instead of the hidden MobileTopBar.
+  - Checked against Figma: Dashboard (1440) and Jobs: Mobile (390), light and dark. The old pages still render inside the new shell until they're rebuilt.
 - [ ] Dashboard ("Welcome, {first name}", 7 stats, two chart cards)
 - [ ] Jobs: Active (grouped by Interviewing, Offers and Applied; search; a toast on status change)
 - [ ] Jobs: Unlikely (one list, oldest first, explanatory header)
