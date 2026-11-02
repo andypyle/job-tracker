@@ -2,6 +2,7 @@ import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react'
 import { useLocation } from 'react-router-dom'
 import { cn } from '../../lib/cn'
 import { getInitials } from '../../lib/initials'
+import { jobsLinks } from '../../lib/navLinks'
 import { AnimatedIcon } from '../AnimatedIcon/AnimatedIcon'
 import { Avatar } from '../Avatar/Avatar'
 import { Icon } from '../Icon/Icon'
@@ -102,21 +103,13 @@ export function Sidebar({ counts, user, onSignOut, className, ...props }: Sideba
             </span>
             {/* Sub items keep 48px with or without a count, so nothing shifts when counts load */}
             <ul aria-labelledby={jobsId} className="flex flex-col gap-1">
-              <li>
-                <NavItem level="sub" to="/jobs/active" icon="briefcase" count={counts?.active} className={cn('min-h-12', sidebarItem)}>
-                  Active
-                </NavItem>
-              </li>
-              <li>
-                <NavItem level="sub" to="/jobs/unlikely" icon="clock" count={counts?.unlikely} className={cn('min-h-12', sidebarItem)}>
-                  Unlikely
-                </NavItem>
-              </li>
-              <li>
-                <NavItem level="sub" to="/jobs/rejected" icon="ban" count={counts?.rejected} className={cn('min-h-12', sidebarItem)}>
-                  Rejected
-                </NavItem>
-              </li>
+              {jobsLinks.map(({ to, icon, label, group }) => (
+                <li key={to}>
+                  <NavItem level="sub" to={to} icon={icon} count={counts?.[group]} className={cn('min-h-12', sidebarItem)}>
+                    {label}
+                  </NavItem>
+                </li>
+              ))}
             </ul>
           </li>
         </ul>

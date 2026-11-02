@@ -5,6 +5,8 @@ interface IconAnimation {
   load: () => Promise<{ default: Animation }>
   /** Overrides the library default, e.g. so a click-replay icon plays on hover instead */
   interaction?: Interaction
+  /** Default playback speed, for Lotties that run long next to our motion tokens */
+  speed?: number
 }
 
 // Icons that animate when they sit on an interactive element. Each is a dynamic import,
@@ -31,8 +33,12 @@ export const iconAnimations: Partial<Record<IconName, IconAnimation>> = {
   clock: { load: () => import('react-useanimations/lib/clock') },
   calendar: { load: () => import('react-useanimations/lib/calendar') },
   ban: { load: () => import('react-useanimations/lib/slash') },
-  /** Toggle: `active` shows the x */
-  menu: { load: () => import('react-useanimations/lib/menu') },
+  /**
+   * Toggle: `active` shows the x. menu2, because `menu` ends on a burger, not an x. A toggle
+   * plays the whole 2s timeline (forward or back), so 6.5× brings each morph to about 300ms, in
+   * step with a panel opening over duration/slow.
+   */
+  menu: { load: () => import('react-useanimations/lib/menu2'), speed: 6.5 },
   /** Toggle between eye-off and eye with `active` */
   eye: { load: () => import('react-useanimations/lib/visibility') },
 }

@@ -40,7 +40,7 @@ Read this file and CLAUDE.md first. Phases 1 and 2 are done. **Next up: Phase 3*
 | MobileTopBar | 14:158 | MobileNav | 82:3 |
 | Screens | 4:4 | | |
 
-Done so far: Spinner 81:3, Button and IconButton 14:144, Input 14:145 (PasswordInput is Input plus the trailing slot), Textarea 49:111, Checkbox 39:3, FormField 14:146, Select 34:3, Badge 46:3, DatePicker 36:3, FileDropzone 49:132, Avatar 14:151, Stat 14:153, ListItem 48:6, Card 48:38, DescriptionList 49:179, Timeline 49:209, Chart 53:4 (as BarChart and DonutChart), EmptyState 14:155, NavItem 14:152, PageHeader 57:3, Alert 81:5545, Toast 31:3 (with Toaster), Dialog 49:3 (Scrim is its `::backdrop`), MobileTopBar 14:158.
+Done so far: Spinner 81:3, Button and IconButton 14:144, Input 14:145 (PasswordInput is Input plus the trailing slot), Textarea 49:111, Checkbox 39:3, FormField 14:146, Select 34:3, Badge 46:3, DatePicker 36:3, FileDropzone 49:132, Avatar 14:151, Stat 14:153, ListItem 48:6, Card 48:38, DescriptionList 49:179, Timeline 49:209, Chart 53:4 (as BarChart and DonutChart), EmptyState 14:155, NavItem 14:152, PageHeader 57:3, Alert 81:5545, Toast 31:3 (with Toaster), Dialog 49:3 (Scrim is its `::backdrop`), MobileTopBar 14:158, MobileNav 82:3.
 
 ### Things learned so far
 
@@ -259,7 +259,17 @@ Built from the Figma Patterns pages:
 - [x] MobileTopBar
   - `<MobileTopBar>` is a `<header>` (banner landmark) with the brand only, per the component description. The page note's "menu button opens the Sidebar as a drawer" is out of date: navigation is MobileNav's job, bottom left. The app shell shows it below md.
   - The brand is Gabarito 18 on a 24px line, which no text style matches, so it uses `text-[1.125rem] leading-6 font-bold`.
-- [ ] MobileNav (the trigger, a panel in a `<dialog>`, staggered enter, focus returns to the trigger)
+- [x] MobileNav (the trigger, a panel in a `<dialog>`, staggered enter, focus returns to the trigger)
+  - `<MobileNav counts? user onSignOut floating?>` takes the same props as Sidebar and renders the trigger plus the panel. By default the trigger floats 16px from the bottom-left corner (plus the safe area) with shadow/overlay. Pass `floating={false}` to put it in the Bottom bar. The app shell shows it below md.
+  - The Jobs links now come from `jobsLinks` in `src/lib/navLinks.ts`, shared with Sidebar.
+  - **Placement:** the panel is a modal `<dialog>` placed from the trigger's rect when it opens (left edge level with the trigger, bottom 8px above it, max height down to 16px from the top) and again on resize, so it works in either position.
+  - **The x:** under a modal dialog the real trigger is inert and behind the scrim. So the dialog carries its own button ("Close menu"), drawn exactly over the trigger (`top: 100% + 8px`), which mounts as the menu glyph and morphs to the x on the next frame. The trigger itself has `aria-expanded`, `aria-controls` and `aria-haspopup="dialog"`.
+  - **Closing:** the x, Esc, a tap on the scrim, choosing a page and Sign out all close it, and the browser returns focus to the trigger. Focus starts on the current page's link (else the first link), not on Sign out, the first focusable item.
+  - **Motion is CSS only:** the dialog (`group`) only holds `display`/`overlay` for the exit. The panel scales 0.92 to 1 from its bottom-left corner on ease/spring over duration/slower, and fades over duration/base with ease/out.
+  - **Deviation, ease/spring (new token):** Figma says ease/bounce over duration/slow, but a cubic-bezier's overshoot is a share of the distance, so on a 0.92 to 1 scale it peaked at 1.003 and the panel felt rigid. `--ease-spring` is a damped spring written with `linear()` (ζ 0.42, generated in Node, 41 points; ζ 0.38 was a touch too bouncy). It overshoots about 23% of the distance, then dips back and settles; here that's 1.019 at about 100ms, 0.996, then still by 400ms. It's registered in `cn.ts`. Use it for short moves where ease/bounce doesn't show; worth adding to the Figma variables. It closes over duration/fast with ease/in, and under reduced motion it only fades. The items fade up 4px with a 20ms stagger from the bottom, on enter only.
+  - **Transition shorthand resets the delay:** a separate `[transition-delay:…]` next to a `[transition:…]` arbitrary class was dropped (every item faded in together). Put the delay inside the shorthand. Found by recording opacity per frame.
+  - **Menu animation fixed:** useAnimations' `menu` ends on a burger bun, not an x. `menu` now maps to `menu2` (chosen over menu3 by look), which rests on the same three lines and ends on an x. Toggle icons need their end frame checked as well as their resting frame. Wait for the whole timeline before judging one: a screenshot taken mid-toggle once made menu2 look like it ended on a "+".
+  - **Toggle speed:** a click-toggle plays the Lottie's whole timeline each way (not half), so the stock timings (menu2 2s, menu3 1.5s) felt slow next to the 280ms panel. Entries in `AnimatedIcon.animations.ts` can now set a default `speed` (a `speed` prop still overrides it); `menu` runs at 6.5×, about 250–300ms per morph, measured in the built Storybook.
 - [ ] Bottom bar
 
 ## Phase 4: Screens

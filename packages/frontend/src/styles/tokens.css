@@ -189,6 +189,14 @@
   --ease-bounce: cubic-bezier(0.34, 1.36, 0.64, 1);
   --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
   --ease-in: cubic-bezier(0.4, 0, 1, 1);
+  /* A damped spring (ζ 0.42): overshoots about 23% of the distance, dips back and settles.
+     For short moves where ease/bounce's overshoot is too small to see (the MobileNav panel's
+     0.92 to 1 scale). Not in Figma yet. Pair with duration/slower so the settle has room. */
+  --ease-spring: linear(
+    0, 0.051, 0.183, 0.363, 0.561, 0.753, 0.922, 1.057, 1.153, 1.21, 1.233, 1.227, 1.2, 1.16,
+    1.115, 1.069, 1.028, 0.994, 0.969, 0.953, 0.946, 0.946, 0.951, 0.96, 0.97, 0.981, 0.991, 1,
+    1.006, 1.01, 1.012, 1.013, 1.012, 1.01, 1.008, 1.005, 1.003, 1.001, 0.999, 0.998, 1
+  );
 
   /* Waiting states: one calm loop. The pulse is the reduced-motion fallback. */
   --animate-spinner: spin 800ms linear infinite;

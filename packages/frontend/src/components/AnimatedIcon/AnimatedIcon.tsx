@@ -50,7 +50,7 @@ export function AnimatedIcon<T extends HTMLElement>({
       active={active}
       interaction={interaction ?? iconAnimations[name]?.interaction}
       autoplay={autoplay && !reducedMotion}
-      speed={speed}
+      speed={speed ?? iconAnimations[name]?.speed}
       // The library types handlers for HTMLElement; ours are for the specific element T
       {...(handlers as Partial<EventProps>)}
       render={(eventProps, { style, className: animationClassName, ...animationProps }) =>
