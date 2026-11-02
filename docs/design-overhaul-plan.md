@@ -37,7 +37,6 @@ Branch: `design-overhaul`. Design decisions and rules live in the Figma file and
 - [x] Storybook loads only the design system (`.storybook/preview.css`), not the legacy app CSS; `vitest.config.ts` now extends `vite.config.ts` so story tests run with Tailwind
 - [x] Icon: 33 icons exported from Figma into `Icon.paths.ts`, rendered with `currentColor`
 - [x] `Foundations/Tokens` story for checking tokens visually in both modes
-- `react-useanimations` is deferred to MobileNav, its only planned use
 
 ## Phase 1: Components
 
@@ -48,10 +47,11 @@ Each component needs:
 - a clean `pnpm test:storybook` and `pnpm exec tsc --noEmit`.
 
 Basics
-- [x] Icon
-- [ ] Spinner
-- [ ] Button (Strong, Primary, Secondary, Ghost, Danger)
-- [ ] IconButton
+- [x] Icon (static, for non-interactive places)
+- [x] AnimatedIcon (`react-useanimations`, for icons on interactive elements; loaded per icon on demand)
+- [x] Spinner
+- [x] Button (Strong, Primary, Secondary, Ghost, Danger)
+- [x] IconButton
 
 Inputs
 - [ ] Input (leading icon, trailing slot, single-line ellipsis)

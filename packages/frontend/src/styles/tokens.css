@@ -66,7 +66,8 @@
   --duration-slow: 280ms;
 }
 
-@theme {
+/* static: emit every token, even ones no utility uses yet, so var(--color-…) always resolves */
+@theme static {
   /* Fonts */
   --font-display: "Gabarito", ui-sans-serif, system-ui, sans-serif;
   --font-sans: "Atkinson Hyperlegible Next Variable", ui-sans-serif, system-ui, sans-serif;
@@ -186,6 +187,19 @@
   --ease-bounce: cubic-bezier(0.34, 1.36, 0.64, 1);
   --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
   --ease-in: cubic-bezier(0.4, 0, 1, 1);
+
+  /* Waiting states: one calm loop. The pulse is the reduced-motion fallback. */
+  --animate-spinner: spin 800ms linear infinite;
+  --animate-pulse-opacity: pulse-opacity 1.2s ease-in-out infinite alternate;
+
+  @keyframes pulse-opacity {
+    from {
+      opacity: 0.5;
+    }
+    to {
+      opacity: 1;
+    }
+  }
 
   /* Text styles: one utility per Figma text style. Headings also need `font-display`. */
   --text-display-hero: 3.75rem;

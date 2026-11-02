@@ -5,6 +5,15 @@ import './preview.css'
 
 const preview: Preview = {
   parameters: {
+    options: {
+      storySort: {
+        order: [
+          'Foundations',
+          ['Color', 'Tone', 'Primitives', 'Typography', 'Spacing and radius', 'Elevation', 'Motion'],
+          'Components',
+        ],
+      },
+    },
     controls: {
       matchers: {
         color: /(background|color)$/i,
