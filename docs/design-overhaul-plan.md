@@ -7,7 +7,7 @@ Branch: `design-overhaul`. Design decisions and rules live in the Figma file and
 
 ## Picking this up in a new session
 
-Read this file and CLAUDE.md first. **Next up: DescriptionList**, then the rest of Phase 1 in order.
+Read this file and CLAUDE.md first. **Next up: Timeline**, then the rest of Phase 1 in order.
 
 ### Workflow per component
 
@@ -40,7 +40,7 @@ Read this file and CLAUDE.md first. **Next up: DescriptionList**, then the rest 
 | MobileTopBar | 14:158 | MobileNav | 82:3 |
 | Screens | 4:4 | | |
 
-Done so far: Spinner 81:3, Button and IconButton 14:144, Input 14:145 (PasswordInput is Input plus the trailing slot), Textarea 49:111, Checkbox 39:3, FormField 14:146, Select 34:3, Badge 46:3, DatePicker 36:3, FileDropzone 49:132, Avatar 14:151, Stat 14:153, ListItem 48:6, Card 48:38.
+Done so far: Spinner 81:3, Button and IconButton 14:144, Input 14:145 (PasswordInput is Input plus the trailing slot), Textarea 49:111, Checkbox 39:3, FormField 14:146, Select 34:3, Badge 46:3, DatePicker 36:3, FileDropzone 49:132, Avatar 14:151, Stat 14:153, ListItem 48:6, Card 48:38, DescriptionList 49:179.
 
 ### Things learned so far
 
@@ -79,6 +79,8 @@ Done so far: Spinner 81:3, Button and IconButton 14:144, Input 14:145 (PasswordI
 - **Deviation:** a selected row's subtitle and meta are text/primary, because text/muted on bg/nav-active is 3.4:1 in Dark mode. Also in Dark mode, avatar/bg and bg/nav-active are both pine-800, so an initials avatar blends into a selected row. Both are worth fixing in Figma.
 - **Testing hover and overlays:** `userEvent.hover` doesn't trigger CSS `:hover` (check the class instead), and `userEvent.click(el)` skips hit testing, so to test what a pointer lands on, click `document.elementFromPoint` at the element's center.
 - **Card** is composable too, not Figma's `title`/`action` props: `<Card padding="default|flush"><CardHeader><CardTitle>…</CardTitle><Button /></CardHeader>{body}</Card>`. It's a `<section>`; `CardTitle` (an h2 by default, `as` for h3/h4, always Heading/H3) takes an id from `Card.context.ts` and reports itself, so `aria-labelledby` only appears when there is a title. `CardHeader` reads the padding from context: flush adds the padding and the border/subtle divider, with the divider taking 1px of the bottom padding so the header is Figma's 60px.
+- **DescriptionList** is a `<dl>` and a size container; `<DescriptionListItem label="Compensation">$165k–$190k</DescriptionListItem>` is a `<div>` with `<dt>`/`<dd>`. Items stack below `@lg` (32rem, the list's width, not the viewport's) and go inline with a 160px label column from there. Each item draws its own divider below (the last one too, as in Figma), inside the bottom padding: 48px inline, 72px stacked. An empty value (null, undefined, false, '') reads "Not set" in text/muted.
+- **Story decorators nest:** a story's decorators wrap inside the meta's, they don't replace them. To vary a wrapper per story, read a story parameter in the meta decorator (`parameters.stacked` in the DescriptionList stories).
 - **No `any`, no `dark:` variants, no primitives in components.**
 
 ## Decisions
@@ -146,7 +148,7 @@ Display
 - [x] Stat
 - [x] ListItem
 - [x] Card
-- [ ] DescriptionList, with part Item (`divide-y`, Stacked layout)
+- [x] DescriptionList, with part Item (Stacked layout)
 - [ ] Timeline, with part Item (Position Middle | Last; Actor User | System)
 - [ ] Chart, with parts Bar, Donut and LegendItem (hand-built SVG/CSS; replaces `recharts`)
 - [ ] EmptyState
