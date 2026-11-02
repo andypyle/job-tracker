@@ -7,7 +7,7 @@ Branch: `design-overhaul`. Design decisions and rules live in the Figma file and
 
 ## Picking this up in a new session
 
-Read this file and CLAUDE.md first. **Next up: Stat**, then the rest of Phase 1 in order.
+Read this file and CLAUDE.md first. **Next up: ListItem**, then the rest of Phase 1 in order.
 
 ### Workflow per component
 
@@ -15,7 +15,7 @@ Read this file and CLAUDE.md first. **Next up: Stat**, then the rest of Phase 1 
 2. Scaffold with plop (CLAUDE.md), then adapt the reference code to our tokens and components. Reuse `Icon`/`AnimatedIcon`, `focusRing` and `colorTransition` from `src/lib/classes.ts`, and `cn()`.
 3. Stories with play functions, plus a dark story (`globals: { theme: 'dark' }`).
 4. `pnpm exec tsc --noEmit` and `pnpm test` from `packages/frontend`.
-5. Compare visually: `pnpm build-storybook -o <tmp>/sb --quiet`, then `node scripts/screenshot-stories.mjs <tmp>/sb <tmp> <story-id>...`, against `get_screenshot` of the Figma component set (the component pages also have a "Light and dark" frame).
+5. Compare visually: `pnpm build-storybook -o <tmp>/sb --quiet`, then `node scripts/screenshot-stories.mjs <tmp>/sb <tmp> <story-id>...`, against `get_screenshot` of the Figma component set (the component pages also have a "Light and dark" frame). If `pnpm storybook` is running, `touch .storybook/preview.css` first and check sizes there too: a static build always scans every file, so it hides the stale-Tailwind problem below.
 6. Tick the box here. Commit at the end of each batch when the user says so.
 
 ### Figma page IDs
@@ -40,7 +40,7 @@ Read this file and CLAUDE.md first. **Next up: Stat**, then the rest of Phase 1 
 | MobileTopBar | 14:158 | MobileNav | 82:3 |
 | Screens | 4:4 | | |
 
-Done so far: Spinner 81:3, Button and IconButton 14:144, Input 14:145 (PasswordInput is Input plus the trailing slot), Textarea 49:111, Checkbox 39:3, FormField 14:146, Select 34:3, Badge 46:3, DatePicker 36:3, FileDropzone 49:132, Avatar 14:151.
+Done so far: Spinner 81:3, Button and IconButton 14:144, Input 14:145 (PasswordInput is Input plus the trailing slot), Textarea 49:111, Checkbox 39:3, FormField 14:146, Select 34:3, Badge 46:3, DatePicker 36:3, FileDropzone 49:132, Avatar 14:151, Stat 14:153.
 
 ### Things learned so far
 
@@ -70,6 +70,9 @@ Done so far: Spinner 81:3, Button and IconButton 14:144, Input 14:145 (PasswordI
 - **Deviation:** the lg icon is 24px, not Figma's 25, to keep the 24px grid whole. lg initials use Heading/H3 (20/28), not Figma's 16px, which looked too small in 56px (sm 12, md 16, lg 20). Worth fixing in Figma.
 - **Stale Tailwind in the Storybook dev server:** new component files created while `pnpm storybook` is running may not get scanned, so classes only they use (Avatar's `size-8`, `size-14`) are missing and the story looks broken while tests pass. `touch .storybook/preview.css` makes it rescan. Compare against the dev server, not only a static build.
 - **Story size checks** use `getComputedStyle`, not `getBoundingClientRect`, which the Storybook zoom tool scales.
+- **Stat** takes `value: number | string`. A number counts up when it changes (`useCountUp` in `src/hooks`: duration/slow read from `--duration-slow`, ease/out through `easeOut` in `src/lib/easing.ts`; reduced motion jumps) and goes through `format` (e.g. ``(n) => `${n}%` ``); a string such as "—" shows as is. The first value doesn't animate; a value arriving after `loading` counts up from 0. Screen readers get the final value from an sr-only copy, not the frames.
+- **Tone rule without a shift:** subtle Stat's 4px top border trades for `pt-4`, so every stat stays 132px as in Figma (strokes there don't affect layout).
+- **Loading Stat** is always the neutral subtle surface (Figma's only loading variant), `aria-busy`, with the label in sr-only text. The skeleton pulses with `animate-pulse-opacity` (opacity only, so it runs under reduced motion too); Figma's is static.
 - **No `any`, no `dark:` variants, no primitives in components.**
 
 ## Decisions
@@ -134,7 +137,7 @@ Display
 - [x] Badge
 - [x] Swatch
 - [x] Avatar (falls back to initials when the image is missing or broken)
-- [ ] Stat
+- [x] Stat
 - [ ] ListItem
 - [ ] Card
 - [ ] DescriptionList, with part Item (`divide-y`, Stacked layout)
