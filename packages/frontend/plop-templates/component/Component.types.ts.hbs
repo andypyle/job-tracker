@@ -1,0 +1,12 @@
+import type { HTMLAttributes } from 'react'
+{{#if withVariants}}
+import type { VariantProps } from 'class-variance-authority'
+import type { {{camelCase name}}Variants } from './{{pascalCase name}}.variants'
+
+export interface {{pascalCase name}}Props
+  extends HTMLAttributes<HTMLDivElement>,
+    VariantProps<typeof {{camelCase name}}Variants> {}
+{{else}}
+
+export interface {{pascalCase name}}Props extends HTMLAttributes<HTMLDivElement> {}
+{{/if}}

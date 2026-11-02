@@ -1,0 +1,15 @@
+import { cn } from '{{libPath}}/cn'
+import type { {{pascalCase name}}Props } from './{{pascalCase name}}.types'
+{{#if withVariants}}
+import { {{camelCase name}}Variants } from './{{pascalCase name}}.variants'
+{{/if}}
+
+{{#if withVariants}}
+export function {{pascalCase name}}({ className, variant, size, ...props }: {{pascalCase name}}Props) {
+  return <div className={cn({{camelCase name}}Variants({ variant, size }), className)} {...props} />
+}
+{{else}}
+export function {{pascalCase name}}({ className, ...props }: {{pascalCase name}}Props) {
+  return <div className={cn(className)} {...props} />
+}
+{{/if}}
