@@ -24,7 +24,7 @@ const statusBadges: SelectOption[] = [
 ]
 
 const meta = {
-  title: 'Components/Select',
+  title: 'Components/Forms/Select',
   component: Select,
   tags: ['autodocs'],
   args: {

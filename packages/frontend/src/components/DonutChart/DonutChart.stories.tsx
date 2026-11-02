@@ -12,7 +12,7 @@ const statuses = [
 ]
 
 const meta = {
-  title: 'Components/DonutChart',
+  title: 'Components/Data display/DonutChart',
   component: DonutChart,
   tags: ['autodocs'],
   args: {

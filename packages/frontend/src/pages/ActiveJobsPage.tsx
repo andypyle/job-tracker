@@ -50,7 +50,7 @@ export function ActiveJobsScreen({ applications, error = false, onStatusChange, 
             action={addButton}
           />
         ) : (
-          // Not designed: everything tracked has moved on to Unlikely or Rejected
+          // Everything tracked has moved on to Unlikely or Rejected (Figma: Jobs: Active, none active)
           <EmptyState
             className="my-auto py-12"
             title="No active applications"

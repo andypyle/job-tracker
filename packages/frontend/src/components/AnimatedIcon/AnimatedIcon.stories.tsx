@@ -9,7 +9,7 @@ import type { IconName } from '../Icon/Icon.paths'
 const animated = Object.keys(iconAnimations) as IconName[]
 
 const meta = {
-  title: 'Components/AnimatedIcon',
+  title: 'Components/Icons/AnimatedIcon',
   component: AnimatedIcon,
   tags: ['autodocs'],
   args: {

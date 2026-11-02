@@ -4,7 +4,7 @@ import { IconButton } from '../IconButton/IconButton'
 import { Input } from './Input'
 
 const meta = {
-  title: 'Components/Input',
+  title: 'Components/Forms/Input',
   component: Input,
   tags: ['autodocs'],
   args: {

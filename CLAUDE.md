@@ -81,14 +81,16 @@ Each page in `src/pages` exports two things: a presentational `XScreen` that tak
 Always scaffold with plop; don't create these files by hand. The interactive prompts don't work in a non-TTY shell, so pass the answers as positional arguments from the repo root:
 
 ```bash
-# component: <name> <withVariants>
-pnpm --filter frontend generate:component ApplicationCard true
+# component: <name> <withVariants> <storybookFolder>
+pnpm --filter frontend generate:component ApplicationCard true Patterns
 
 # part: <parentComponent> <name> <withVariants> <withStories>
 pnpm --filter frontend generate:part ApplicationCard card-header false false
 ```
 
-Names can be given in any case; they're converted to PascalCase. The part generator only accepts a parent folder that contains a matching `Name/Name.tsx`. The plopfile is `packages/frontend/plopfile.js`, and the templates are in `packages/frontend/plop-templates/component/`. If you change the conventions above, update the templates too.
+Names can be given in any case; they're converted to PascalCase. The part generator only accepts a parent folder that contains a matching `Name/Name.tsx`.
+
+Storybook folders: generic building blocks go under `Components/` by kind (`Actions`, `Forms`, `Data display`, `Feedback`, `Overlays`, `Navigation`, `Icons`; quote `"Components/Data display"` on the command line). App-specific pieces go in `Patterns`, page frames in `Layouts`, and page Screens in `Screens`, matching the Figma file's split. A part's stories sit under its parent's (`…/Select/Parts/Option`). The folder list is `STORY_GROUPS` in the plopfile; keep it in step with `storySort` in `.storybook/preview.tsx`. The plopfile is `packages/frontend/plopfile.js`, and the templates are in `packages/frontend/plop-templates/component/`. If you change the conventions above, update the templates too.
 
 ## Storybook and tests
 

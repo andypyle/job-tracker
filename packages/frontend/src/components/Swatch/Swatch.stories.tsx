@@ -4,7 +4,7 @@ import { tones } from '../../lib/tone'
 import { Swatch } from './Swatch'
 
 const meta = {
-  title: 'Components/Swatch',
+  title: 'Components/Data display/Swatch',
   component: Swatch,
   tags: ['autodocs'],
   argTypes: {

@@ -31,7 +31,7 @@ export function UnlikelyJobsScreen({ applications, error = false, onStatusChange
       error={error}
       onAddApplication={onAddApplication}
       empty={
-        // Not designed in Figma
+        // Figma: Screens › Jobs: Unlikely, empty
         <EmptyState
           className="my-auto py-12"
           title="Nothing unlikely"

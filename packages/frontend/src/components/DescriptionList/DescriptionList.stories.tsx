@@ -16,7 +16,7 @@ const details = (
 )
 
 const meta = {
-  title: 'Components/DescriptionList',
+  title: 'Components/Data display/DescriptionList',
   component: DescriptionList,
   tags: ['autodocs'],
   args: { children: details },

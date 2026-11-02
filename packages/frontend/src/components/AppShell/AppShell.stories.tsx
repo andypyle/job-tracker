@@ -32,7 +32,7 @@ const page = (
 )
 
 const meta = {
-  title: 'Components/AppShell',
+  title: 'Layouts/AppShell',
   component: AppShell,
   tags: ['autodocs'],
   args: {
@@ -120,11 +120,11 @@ export const Phone: Story = {
     await expect(isShown(topBar(canvasElement))).toBe(true)
     await expect(topBar(canvasElement).getBoundingClientRect().top).toBe(0)
 
-    // Figma's 84px bar: 12px, the 44px row, 28px; 16px sides and a 12px gap
+    // A 68px bar: 12px, the 44px row, 12px; 16px sides and a 12px gap
     const bar = bottomBar(canvasElement)
     const rect = bar.getBoundingClientRect()
     await expect(rect.bottom).toBe(window.innerHeight)
-    await expect(rect.height).toBe(84) // the top border takes 1px of the 12px
+    await expect(rect.height).toBe(68) // the top border takes 1px of the 12px
     const trigger = within(bar).getByRole('button', { name: 'Menu' })
     await expect(getComputedStyle(trigger).position).not.toBe('fixed')
     await expect(trigger.getBoundingClientRect().left).toBe(16)

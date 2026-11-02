@@ -13,6 +13,26 @@ const variantsPrompt = {
 
 const requiredName = (label) => (value) => (value.trim() ? true : `A ${label} name is required`)
 
+// Storybook folders for components; keep in sync with storySort in .storybook/preview.tsx
+const STORY_GROUPS = [
+  'Components/Actions',
+  'Components/Forms',
+  'Components/Data display',
+  'Components/Feedback',
+  'Components/Overlays',
+  'Components/Navigation',
+  'Components/Icons',
+  'Patterns',
+  'Layouts',
+]
+
+// A part's stories sit under its parent's, e.g. Components/Forms/Select/Parts/Option
+function parentStoryTitle(parent) {
+  const stories = path.join(COMPONENTS_DIR, parent, `${parent}.stories.tsx`)
+  const match = fs.existsSync(stories) && fs.readFileSync(stories, 'utf8').match(/^ {2}title: '([^']+)'/m)
+  return match ? match[1] : `Components/${parent}`
+}
+
 // Component folders that follow the ComponentName/ComponentName.tsx convention
 function listComponents() {
   return fs
@@ -39,6 +59,7 @@ export default function (plop) {
     prompts: [
       { type: 'input', name: 'name', message: 'Component name:', validate: requiredName('component') },
       variantsPrompt,
+      { type: 'list', name: 'group', message: 'Storybook folder:', choices: STORY_GROUPS },
     ],
     actions: (data) => {
       const files = ['tsx', 'types.ts', 'stories.tsx']
@@ -47,7 +68,7 @@ export default function (plop) {
       return addFiles({
         dir: `${COMPONENTS_DIR}/{{pascalCase name}}`,
         files,
-        data: { libPath: '../../lib', storyTitle: plop.renderString('Components/{{pascalCase name}}', data) },
+        data: { libPath: '../../lib', storyTitle: plop.renderString('{{group}}/{{pascalCase name}}', data) },
       })
     },
   })
@@ -79,7 +100,7 @@ export default function (plop) {
       return addFiles({
         dir: `${COMPONENTS_DIR}/{{parent}}/parts/{{pascalCase name}}`,
         files,
-        data: { libPath: '../../../../lib', storyTitle: plop.renderString('Components/{{parent}}/Parts/{{pascalCase name}}', data) },
+        data: { libPath: '../../../../lib', storyTitle: plop.renderString(`${parentStoryTitle(data.parent)}/Parts/{{pascalCase name}}`, data) },
       })
     },
   })

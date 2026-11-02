@@ -50,14 +50,19 @@ export function PageHeader({ className, appearance, title, description, back, ac
         >
           {title}
         </h1>
-        {description && <p className="col-start-1 row-start-2 text-body-base text-text-muted">{description}</p>}
+        {/*
+          The description line is always there, empty and hidden when there's none, so headers
+          are the same height from page to page and nothing below shifts when you switch
+        */}
+        {description ? (
+          <p className="col-start-1 row-start-2 text-body-base text-text-muted">{description}</p>
+        ) : (
+          <p aria-hidden className="invisible col-start-1 row-start-2 text-body-base">
+            {' '}
+          </p>
+        )}
         {actions && (
-          <div
-            className={cn(
-              'col-start-2 row-start-2 flex flex-wrap items-center justify-end gap-3 md:row-start-1',
-              description && 'md:row-span-2',
-            )}
-          >
+          <div className="col-start-2 row-start-2 flex flex-wrap items-center justify-end gap-3 md:row-span-2 md:row-start-1">
             {actions}
           </div>
         )}

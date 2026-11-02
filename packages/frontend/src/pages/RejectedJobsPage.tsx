@@ -22,7 +22,7 @@ export function RejectedJobsScreen({ applications, error = false, onStatusChange
   return (
     <JobsListScreen
       title="Rejected"
-      // Not designed in Figma
+      // Figma: Screens › Jobs: Rejected (and Jobs: Rejected, empty)
       description="Rejections and eliminated roles. Change a status if one comes back."
       listName="Rejected"
       applications={rejected}

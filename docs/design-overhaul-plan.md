@@ -382,6 +382,17 @@ Check each screen against its Figma frame, in light and dark, at 1440 and 390 wi
 - [x] Remove `recharts`
 - [x] Update CLAUDE.md: the palette reset, `classes.ts`/`motion.ts`, `STATUS_TONES`, composable vs props, `toast()`, the Screen/Page split, and phone-viewport stories. The plop templates needed no change.
 
+## Figma synced to the code (2026-11-02)
+
+The "worth fixing in Figma" notes above are done in Figma, so the file matches the build:
+
+- **Variables:** duration/slower (400ms) and ease/spring added to Motion, with rows on Foundations. duration/slow's description no longer mentions toasts.
+- **Notes:** Toast motion (400ms in, 200ms out, separate fade), the NavItem rail (duration/slow), and the MobileNav panel (ease/spring over duration/slower).
+- **Components:** Avatar lg (24px icon, Heading/H3 initials). DayCell outside uses text/muted. ListItem selected uses text/primary for the subtitle and meta. Toast: the action and × are grouped on the title line with 24px gaps, the height hugs with an 80px minimum, and Info's action is now bound to Show action. Chart/Bar has a hover-and-focus example. PageHeader keeps the description line (134px) and has a new `Breakpoint=Phone` variant (full-width title, actions beside the description). The Bottom bar is 68px.
+- **Screens:** Industry is a text Input. Detail files show the name only, with a Cover letter row. Jobs: Mobile is grouped. Unlikely is newest first. Phone headers use the Phone variant. The phone donut legend gap is 16px.
+- **New frames** (to the right of each row on Screens): Sign up, check your email; Skip link focused; Jobs: Active, no matches and none active; Jobs: Unlikely, empty; Jobs: Rejected and Rejected, empty; Edit application; Application detail, not found and loading. On the Toast page there's also a "Toasts in the app" frame with the product's copy.
+- **Left as notes in Figma, still open:** in Dark mode, avatar/bg, tone/neutral/soft and bg/nav-active are all pine-800 (noted on Avatar, ListItem and NavItem); one-word initials ("F" vs "FN", noted on Avatar).
+
 ## Not designed yet (out of scope for this pass)
 
 - Unlikely and Empty on mobile (adapt the existing mobile layouts)

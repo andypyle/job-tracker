@@ -45,7 +45,7 @@ void (
 )
 
 const meta = {
-  title: 'Components/Timeline',
+  title: 'Components/Data display/Timeline',
   component: Timeline,
   tags: ['autodocs'],
   args: { children: history },

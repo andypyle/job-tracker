@@ -5,7 +5,7 @@ import { Button } from './Button'
 const variants = ['primary', 'strong', 'secondary', 'ghost', 'danger'] as const
 
 const meta = {
-  title: 'Components/Button',
+  title: 'Components/Actions/Button',
   component: Button,
   tags: ['autodocs'],
   args: {

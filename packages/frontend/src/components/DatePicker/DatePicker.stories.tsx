@@ -6,7 +6,7 @@ import { FormField } from '../FormField/FormField'
 import { DatePicker } from './DatePicker'
 
 const meta = {
-  title: 'Components/DatePicker',
+  title: 'Components/Forms/DatePicker',
   component: DatePicker,
   tags: ['autodocs'],
   args: {

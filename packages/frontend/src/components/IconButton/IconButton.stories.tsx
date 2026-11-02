@@ -3,7 +3,7 @@ import { expect, fn, userEvent } from 'storybook/test'
 import { IconButton } from './IconButton'
 
 const meta = {
-  title: 'Components/IconButton',
+  title: 'Components/Actions/IconButton',
   component: IconButton,
   tags: ['autodocs'],
   args: {

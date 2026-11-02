@@ -7,7 +7,7 @@ import { Alert } from './Alert'
 const message = 'That email and password don’t match. Check them and try again.'
 
 const meta = {
-  title: 'Components/Alert',
+  title: 'Components/Feedback/Alert',
   component: Alert,
   tags: ['autodocs'],
   args: { children: message },

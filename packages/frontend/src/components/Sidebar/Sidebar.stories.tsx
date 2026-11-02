@@ -4,7 +4,7 @@ import { expect, fn, userEvent, waitFor, within } from 'storybook/test'
 import { Sidebar } from './Sidebar'
 
 const meta = {
-  title: 'Components/Sidebar',
+  title: 'Patterns/Sidebar',
   component: Sidebar,
   tags: ['autodocs'],
   args: {

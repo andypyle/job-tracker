@@ -1,7 +1,7 @@
 // Screenshots Storybook stories from a static build, for comparing against Figma.
 //
 //   pnpm build-storybook -o /tmp/sb --quiet
-//   node scripts/screenshot-stories.mjs /tmp/sb /tmp/shots components-button--all-variants foundations-color--color
+//   node scripts/screenshot-stories.mjs /tmp/sb /tmp/shots components-actions-button--all-variants foundations-color--color
 //
 // Story IDs are in the Storybook URL (?path=/story/<id>). Add `|&globals=theme:dark` to an ID
 // to force dark mode. Set WIDTH/HEIGHT to change the viewport (default 1300×700).

@@ -4,7 +4,7 @@ import { expect, userEvent, waitFor } from 'storybook/test'
 import { NavItem } from './NavItem'
 
 const meta = {
-  title: 'Components/NavItem',
+  title: 'Components/Navigation/NavItem',
   component: NavItem,
   tags: ['autodocs'],
   args: { to: '/', end: true, icon: 'dashboard', children: 'Dashboard' },

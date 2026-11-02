@@ -291,7 +291,7 @@ function DeleteDialog({ open, onClose, applicationName, onDelete }: DeleteDialog
   )
 }
 
-/** Not designed in Figma: the loaded layout's shapes, pulsing like the Stat and row skeletons */
+/** The loaded layout's shapes, pulsing like the Stat and row skeletons (Figma: Application detail, loading) */
 function DetailSkeleton() {
   const bar = 'rounded-xs bg-bg-skeleton'
   return (

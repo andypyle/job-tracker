@@ -6,7 +6,7 @@ import { EmptyState } from './EmptyState'
 const onAdd = fn()
 
 const meta = {
-  title: 'Components/EmptyState',
+  title: 'Components/Feedback/EmptyState',
   component: EmptyState,
   tags: ['autodocs'],
   args: {

@@ -7,7 +7,7 @@ import { PageHeader } from './PageHeader'
 const onAdd = fn()
 
 const meta = {
-  title: 'Components/PageHeader',
+  title: 'Components/Navigation/PageHeader',
   component: PageHeader,
   tags: ['autodocs'],
   args: {
@@ -110,12 +110,23 @@ export const WithBackLinkPhone: Story = {
   },
 }
 
-/** Without actions or a description, only the title */
+/**
+ * Without actions or a description, only the title. The description's line is kept, empty, so
+ * the header is as tall as one with a description and pages don't shift when you switch.
+ */
 export const TitleOnly: Story = {
   args: { description: undefined, actions: undefined },
   play: async ({ canvas, canvasElement }) => {
     await expect(canvas.queryByRole('button')).not.toBeInTheDocument()
-    await expect(getComputedStyle(canvasElement.querySelector('header') as HTMLElement).height).toBe('104px')
+    await expect(getComputedStyle(canvasElement.querySelector('header') as HTMLElement).height).toBe('134px')
+  },
+}
+
+/** Dashboard's header: a title and an action, no description, still the full 134px */
+export const TitleAndActions: Story = {
+  args: { title: 'Welcome, Andy', description: undefined },
+  play: async ({ canvasElement }) => {
+    await expect(getComputedStyle(canvasElement.querySelector('header') as HTMLElement).height).toBe('134px')
   },
 }
 

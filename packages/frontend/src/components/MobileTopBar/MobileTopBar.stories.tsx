@@ -3,7 +3,7 @@ import { expect } from 'storybook/test'
 import { MobileTopBar } from './MobileTopBar'
 
 const meta = {
-  title: 'Components/MobileTopBar',
+  title: 'Patterns/MobileTopBar',
   component: MobileTopBar,
   tags: ['autodocs'],
   // 390px wide, as in Figma

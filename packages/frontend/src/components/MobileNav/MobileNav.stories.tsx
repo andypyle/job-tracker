@@ -4,7 +4,7 @@ import { expect, fn, userEvent, waitFor, within } from 'storybook/test'
 import { MobileNav } from './MobileNav'
 
 const meta = {
-  title: 'Components/MobileNav',
+  title: 'Patterns/MobileNav',
   component: MobileNav,
   tags: ['autodocs'],
   args: {

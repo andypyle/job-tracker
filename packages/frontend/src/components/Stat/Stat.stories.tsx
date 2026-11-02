@@ -9,7 +9,7 @@ import type { StatEmphasis } from './Stat.types'
 const emphases: StatEmphasis[] = ['subtle', 'strong']
 
 const meta = {
-  title: 'Components/Stat',
+  title: 'Components/Data display/Stat',
   component: Stat,
   tags: ['autodocs'],
   args: {

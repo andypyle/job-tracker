@@ -6,7 +6,7 @@ import { Badge } from './Badge'
 const appearances = ['solid', 'soft', 'outline'] as const
 
 const meta = {
-  title: 'Components/Badge',
+  title: 'Components/Data display/Badge',
   component: Badge,
   tags: ['autodocs'],
   args: {

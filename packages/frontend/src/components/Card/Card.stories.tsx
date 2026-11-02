@@ -35,7 +35,7 @@ const jobList = (
 )
 
 const meta = {
-  title: 'Components/Card',
+  title: 'Components/Data display/Card',
   component: Card,
   tags: ['autodocs'],
   args: {

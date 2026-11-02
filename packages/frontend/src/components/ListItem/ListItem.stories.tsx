@@ -38,7 +38,7 @@ const content = (
 )
 
 const meta = {
-  title: 'Components/ListItem',
+  title: 'Components/Data display/ListItem',
   component: ListItem,
   tags: ['autodocs'],
   args: { children: content() },

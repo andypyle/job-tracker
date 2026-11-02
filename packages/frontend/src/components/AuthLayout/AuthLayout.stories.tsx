@@ -3,7 +3,7 @@ import { expect } from 'storybook/test'
 import { AuthLayout } from './AuthLayout'
 
 const meta = {
-  title: 'Components/AuthLayout',
+  title: 'Layouts/AuthLayout',
   component: AuthLayout,
   tags: ['autodocs'],
   parameters: { layout: 'fullscreen' },

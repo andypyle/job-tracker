@@ -36,7 +36,7 @@ function deferred() {
 let save = deferred()
 
 const meta = {
-  title: 'Components/StatusSelect',
+  title: 'Patterns/StatusSelect',
   component: StatusSelect,
   tags: ['autodocs'],
   args: {

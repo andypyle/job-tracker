@@ -16,7 +16,7 @@ const weeks = [
 ]
 
 const meta = {
-  title: 'Components/BarChart',
+  title: 'Components/Data display/BarChart',
   component: BarChart,
   tags: ['autodocs'],
   args: {

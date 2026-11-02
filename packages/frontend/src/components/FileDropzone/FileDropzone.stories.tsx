@@ -77,7 +77,7 @@ function UploadDemo({ failWith, ...props }: Partial<FileDropzoneProps> & { failW
 }
 
 const meta = {
-  title: 'Components/FileDropzone',
+  title: 'Components/Forms/FileDropzone',
   component: FileDropzone,
   tags: ['autodocs'],
   args: {

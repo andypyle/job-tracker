@@ -6,7 +6,7 @@ import { iconPaths, type IconName } from './Icon.paths'
 const names = Object.keys(iconPaths) as IconName[]
 
 const meta = {
-  title: 'Components/Icon',
+  title: 'Components/Icons/Icon',
   component: Icon,
   tags: ['autodocs'],
   args: {

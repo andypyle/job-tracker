@@ -50,7 +50,7 @@ function pdf(name: string, size: number) {
 }
 
 const meta = {
-  title: 'Components/ApplicationForm',
+  title: 'Patterns/ApplicationForm',
   component: ApplicationForm,
   tags: ['autodocs'],
   args: {

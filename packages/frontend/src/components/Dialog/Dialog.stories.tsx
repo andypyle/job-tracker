@@ -51,7 +51,7 @@ const longBody = (
 )
 
 const meta = {
-  title: 'Components/Dialog',
+  title: 'Components/Overlays/Dialog',
   component: DialogDemo,
   tags: ['autodocs'],
   args: {

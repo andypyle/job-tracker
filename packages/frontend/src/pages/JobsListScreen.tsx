@@ -83,7 +83,7 @@ export function JobsListScreen({
             <ApplicationCardSkeleton />
           </ul>
         ) : matches.length === 0 ? (
-          // Not designed in Figma
+          // Figma: Screens › Jobs: Active, no matches
           <EmptyState
             className="py-12"
             titleAs="h2"

@@ -62,7 +62,7 @@ function Demo(args: ApplicationDialogProps) {
 }
 
 const meta = {
-  title: 'Components/ApplicationDialog',
+  title: 'Patterns/ApplicationDialog',
   component: ApplicationDialog,
   tags: ['autodocs'],
   parameters: { layout: 'fullscreen' },

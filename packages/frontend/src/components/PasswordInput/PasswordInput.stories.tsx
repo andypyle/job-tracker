@@ -3,7 +3,7 @@ import { expect, userEvent } from 'storybook/test'
 import { PasswordInput } from './PasswordInput'
 
 const meta = {
-  title: 'Components/PasswordInput',
+  title: 'Components/Forms/PasswordInput',
   component: PasswordInput,
   tags: ['autodocs'],
   args: {

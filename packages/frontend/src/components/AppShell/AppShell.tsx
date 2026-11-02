@@ -7,14 +7,14 @@ import { Sidebar } from '../Sidebar/Sidebar'
 import { Toaster } from '../Toaster/Toaster'
 import type { AppShellProps } from './AppShell.types'
 
-// The Bottom bar is Figma's 84px: its 1px top border and 11px, the 44px row, then 28px below (or
-// the safe area, if that's more). The page is padded by the same amount so its end clears the bar.
-const bottomBarPadding = 'pb-[max(--spacing(7),env(safe-area-inset-bottom))]'
-const bottomBarClearance = 'max-md:pb-[calc(--spacing(14)+max(--spacing(7),env(safe-area-inset-bottom)))]'
+// The Bottom bar is 68px: its 1px top border and 11px, the 44px row, then 12px below (or the safe
+// area, if that's more). The page is padded by the same amount so its end clears the bar.
+const bottomBarPadding = 'pb-[max(--spacing(3),env(safe-area-inset-bottom))]'
+const bottomBarClearance = 'max-md:pb-[calc(--spacing(14)+max(--spacing(3),env(safe-area-inset-bottom)))]'
 
 // Below md, toasts sit 16px above whatever holds the bottom edge: the Bottom bar, or the
 // floating MobileNav trigger (16px + 44px + the safe area)
-const toastsAboveBar = 'max-md:bottom-[calc(--spacing(18)+max(--spacing(7),env(safe-area-inset-bottom)))]'
+const toastsAboveBar = 'max-md:bottom-[calc(--spacing(18)+max(--spacing(3),env(safe-area-inset-bottom)))]'
 const toastsAboveTrigger = 'max-md:bottom-[calc(--spacing(19)+env(safe-area-inset-bottom))]'
 
 /**

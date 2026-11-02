@@ -4,7 +4,7 @@ import { Button } from '../Button/Button'
 import { Toast } from './Toast'
 
 const meta = {
-  title: 'Components/Toast',
+  title: 'Components/Feedback/Toast',
   component: Toast,
   tags: ['autodocs'],
   args: {

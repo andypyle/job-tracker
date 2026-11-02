@@ -15,7 +15,7 @@ const onUndo = fn()
 let shown = 0
 
 const meta = {
-  title: 'Components/Toaster',
+  title: 'Components/Feedback/Toaster',
   component: Toaster,
   tags: ['autodocs'],
   parameters: { layout: 'fullscreen' },

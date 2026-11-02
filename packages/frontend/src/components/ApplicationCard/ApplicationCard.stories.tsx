@@ -25,7 +25,7 @@ const application = (overrides: Partial<Application> = {}): Application => ({
 })
 
 const meta = {
-  title: 'Components/ApplicationCard',
+  title: 'Patterns/ApplicationCard',
   component: ApplicationCard,
   tags: ['autodocs'],
   args: {

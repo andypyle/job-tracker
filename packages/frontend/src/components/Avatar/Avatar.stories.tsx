@@ -12,7 +12,7 @@ const broken = '/missing-logo.png'
 const sizes: AvatarSize[] = ['sm', 'md', 'lg']
 
 const meta = {
-  title: 'Components/Avatar',
+  title: 'Components/Data display/Avatar',
   component: Avatar,
   tags: ['autodocs'],
   args: {
