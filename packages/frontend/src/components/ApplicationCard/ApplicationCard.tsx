@@ -39,7 +39,11 @@ export function ApplicationCard({
           </Link>
         </ListItemTitle>
         <p>{company}</p>
-        <p className="text-caption-regular">{compensation ? `${compensation} · ${when}` : when}</p>
+        <p className="text-caption-regular">
+          {/* The phone frame leaves compensation out, so the meta line stays one line */}
+          {compensation && <span className="max-md:hidden">{`${compensation} · `}</span>}
+          {when}
+        </p>
       </ListItemText>
       <div className="flex shrink-0 flex-col items-end gap-1.5">
         <StatusSelect value={status} onChange={onStatusChange} applicationName={`${job_title} at ${company}`} />

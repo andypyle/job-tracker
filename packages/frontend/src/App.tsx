@@ -6,6 +6,7 @@ import { LoginPage } from './pages/LoginPage'
 import { RegisterPage } from './pages/RegisterPage'
 import { DashboardPage } from './pages/DashboardPage'
 import { JobsPage } from './pages/JobsPage'
+import { ActiveJobsPage } from './pages/ActiveJobsPage'
 import { ApplicationDetailPage } from './pages/ApplicationDetailPage'
 
 // ---------------------------------------------------------------------------
@@ -59,6 +60,8 @@ export default function App() {
 
           {/* /jobs → redirect to /jobs/active */}
           <Route path="/jobs" element={<Navigate to="/jobs/active" replace />} />
+
+          <Route path="/jobs/active" element={<ActiveJobsPage />} />
 
           {/* /jobs/:status — e.g. /jobs/active, /jobs/rejected, /jobs/applied, /jobs/all */}
           <Route path="/jobs/:status" element={<JobsPage />} />

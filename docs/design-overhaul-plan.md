@@ -7,7 +7,7 @@ Branch: `design-overhaul`. Design decisions and rules live in the Figma file and
 
 ## Picking this up in a new session
 
-Read this file and CLAUDE.md first. Phases 1 to 3 are done. **Next up: Phase 4** (screens), in order; Login, Sign up, the App shell and the Dashboard are done, so Jobs: Active is next.
+Read this file and CLAUDE.md first. Phases 1 to 3 are done. **Next up: Phase 4** (screens), in order; Login, Sign up, the App shell, the Dashboard, Jobs: Active and Jobs: Empty are done, so Jobs: Unlikely is next.
 
 ### Workflow per component
 
@@ -310,10 +310,22 @@ Check each screen against its Figma frame, in light and dark, at 1440 and 390 wi
   - **States:** loading shows Stat skeletons (the loaded size, so the rows don't shift) and a 184px pulsing block in each chart card (`aria-busy`). The timeline stats load separately: null values read "—" with "Not enough data yet", and a failed request "Couldn’t load this". A failed applications request shows a danger Alert. With no applications, the Jobs: Empty pattern (its copy, centered, no header action) replaces the numbers; `<main>` is now a flex column so pages can fill the height.
   - **Deviation:** below md the donut's legend gap is 16px, not 32. The ring, 32px and legend need about 325px, and a 390px phone gives the card body 310; Figma's mobile frame clips the legend at the card edge.
   - Checked against Figma at 1440 (light, dark, empty) and 390 (light, dark).
-- [ ] Jobs: Active (grouped by Interviewing, Offers and Applied; search; a toast on status change)
+- [x] Jobs: Active (grouped by Interviewing, Offers and Applied; search; a toast on status change)
+  - Same split as Dashboard: `src/pages/ActiveJobsPage.tsx` exports `ActiveJobsScreen({ applications, error?, onStatusChange(application, status), onAddApplication })` and `ActiveJobsPage`, routed at `/jobs/active` ahead of the old `/jobs/:status` (which still serves Unlikely and Rejected). Stories are `Screens/Jobs: Active`; a `Stateful` render holds the list so a status change moves the row.
+  - **Data:** the screen takes every application and keeps `statusGroup(...) === 'active'`. The page uses `['applications', 'all']`, shared with the nav counts. `activeGroups`, `matchesSearch`, `newestFirst` and `describeActive` ("14 in progress · 2 interviewing · 1 offer", leaving out zero groups) are in `src/lib/jobsList.ts` (unit tested), for the Unlikely and Rejected lists to reuse.
+  - **Groups:** a `<section>` per status with an h2 (Heading/H3) and a small neutral/soft count Badge; empty groups drop out. Rows are newest first.
+  - **Below md:** the same groups with their headings, 24px apart (rows stay 12px apart).
+  - **Deviation (decided 2026-11-02):** Figma's phone frame is one flat list with no headings. The groups stay on phones as well; update the Figma frame to match.
+  - **Phone details:** the search placeholder shortens to "Search". The row changes went into the components: ListItem is 12px apart with 16/12px sides below md, and ApplicationCard hides the compensation below md (the meta line is now a `<p>` with a span, so tests find it by "Applied …" and check `toHaveTextContent`).
+  - **Status change:** `mutateAsync` on `updateApplication`; it settles after `['applications']` and `['timeline-stats']` refetch, so the row moves to its new group as StatusSelect's toast appears. A failure shows a danger toast. Rows that arrived in a group since the last render (new, or moved by a status change or Undo) get `enter` (`useEnteredRows`); nothing animates on first load. No FLIP: rows leaving a group just go.
+  - **Search** filters the title and company, case-insensitive. An sr-only live line says "3 matching applications". No match (not designed) shows an EmptyState "No matches" with a Secondary "Clear search" that refocuses the field. The header keeps describing the whole list.
+  - **Loading:** three ApplicationCardSkeletons in an `aria-busy` list, the search disabled, no description. **Error:** a danger Alert, no header action.
+  - **None active** (everything is Unlikely or Rejected; not designed): EmptyState "No active applications" with the Add button.
+  - **Not ours to fix here:** Avatar initials for a one-word company are one letter ("F" for Fieldnote); the Figma frame shows "FN". Worth deciding which is right.
+  - Checked against Figma at 1440 (light, dark, empty) and 390 (light).
 - [ ] Jobs: Unlikely (one list, oldest first, explanatory header)
 - [ ] Jobs: Rejected (Unlikely layout; includes Role Eliminated)
-- [ ] Jobs: Empty
+- [x] Jobs: Empty: part of Jobs: Active (`Empty` story). With no applications at all, the header says "Nothing tracked yet", has no action, and the EmptyState is centered as on the Dashboard.
 - [ ] Add application dialog (desktop dialog, mobile sheet, fetching state)
 - [ ] Edit application (same dialog, prefilled)
 - [ ] Application detail (Details and Status history cards, low-emphasis Delete)

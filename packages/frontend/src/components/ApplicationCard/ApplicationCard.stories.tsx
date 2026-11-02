@@ -69,7 +69,7 @@ export const Default: Story = {
     await expect(getComputedStyle(row(canvasElement)).height).toBe('80px')
     await expect(canvas.getByText('NL')).toBeInTheDocument()
     await expect(canvas.getByText('Northwind Labs')).toBeVisible()
-    await expect(canvas.getByText('$165k–$190k · Applied Oct 21')).toBeVisible()
+    await expect(canvas.getByText('Applied Oct 21')).toHaveTextContent('$165k–$190k · Applied Oct 21')
     await expect(canvas.getByText('Referral')).toBeVisible()
     await expect(canvas.getByRole('combobox', { name: 'Status: Senior Product Designer at Northwind Labs' })).toHaveTextContent(
       'Applied',
@@ -111,7 +111,9 @@ export const Unlikely: Story = {
 export const FromAnotherYear: Story = {
   args: { application: application({ date_applied: `${Number(year) - 1}-12-30` }) },
   play: async ({ canvas }) => {
-    await expect(canvas.getByText(`$165k–$190k · Applied Dec 30, ${Number(year) - 1}`)).toBeVisible()
+    await expect(canvas.getByText(`Applied Dec 30, ${Number(year) - 1}`)).toHaveTextContent(
+      `$165k–$190k · Applied Dec 30, ${Number(year) - 1}`,
+    )
   },
 }
 

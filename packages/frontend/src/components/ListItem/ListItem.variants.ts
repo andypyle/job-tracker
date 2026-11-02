@@ -5,7 +5,8 @@ import { cva } from 'class-variance-authority'
 // height with the content centered: the same 80px with all three lines, and room to grow.
 export const listItemVariants = cva(
   [
-    'relative flex min-h-20 items-center gap-4 rounded-sm px-5 py-2',
+    // Below md, 12px apart with 16/12px sides, as in the Jobs: Mobile frame
+    'relative flex min-h-20 items-center gap-4 rounded-sm px-5 py-2 max-md:gap-3 max-md:pr-3 max-md:pl-4',
     'transition-[background-color,border-color,box-shadow] duration-(--duration-fast) ease-out',
     // A link in the ListItemTitle covers the row. Controls are positioned so they paint above
     // it and stay clickable (:where keeps this weaker than the title link's own `static`).
@@ -19,7 +20,7 @@ export const listItemVariants = cva(
         // bg/nav-active and a 3px brand/default rail, which takes 3px of the padding so the
         // content doesn't move. text/muted on bg/nav-active is 3.4:1 in Dark mode, so the text
         // column turns text/primary (deviation from Figma); size and weight still set lines apart.
-        true: 'border-l-3 border-brand-default bg-bg-nav-active pl-[calc(--spacing(5)-3px)] [&_[data-list-item-text]]:text-text-primary',
+        true: 'border-l-3 border-brand-default bg-bg-nav-active pl-[calc(--spacing(5)-3px)] max-md:pl-[calc(--spacing(4)-3px)] [&_[data-list-item-text]]:text-text-primary',
         false: 'bg-bg-surface',
       },
       enter: {
