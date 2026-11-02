@@ -45,9 +45,29 @@ const preview: Preview = {
   decorators: [
     // Tokens use light-dark(), so setting color-scheme switches every token.
     // A story can pin a mode with `globals: { theme: 'dark' }`.
-    (Story, { globals }) => {
-      document.documentElement.style.colorScheme = globals.theme === 'dark' ? 'dark' : 'light'
-      return <Story />
+    (Story, { globals, viewMode }) => {
+      const scheme = globals.theme === 'dark' ? 'dark' : 'light'
+      if (viewMode !== 'docs') {
+        document.documentElement.style.colorScheme = scheme
+        return <Story />
+      }
+      // A docs page renders every story in one document, so the scheme goes on a wrapper per
+      // story; setting it on <html> would let the last story (usually Dark) theme them all.
+      // The wrapper sets its own background and text color, since `color` resolves where it's set.
+      document.documentElement.style.colorScheme = 'light'
+      return (
+        <div
+          style={{
+            colorScheme: scheme,
+            background: 'var(--color-bg-canvas)',
+            color: 'var(--color-text-primary)',
+            padding: '1rem',
+            borderRadius: 'var(--radius-sm)',
+          }}
+        >
+          <Story />
+        </div>
+      )
     },
   ],
 }

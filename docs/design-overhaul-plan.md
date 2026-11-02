@@ -7,7 +7,7 @@ Branch: `design-overhaul`. Design decisions and rules live in the Figma file and
 
 ## Picking this up in a new session
 
-Read this file and CLAUDE.md first. **Next up: FileDropzone**, then the rest of Phase 1 in order (Badge and Swatch are done).
+Read this file and CLAUDE.md first. **Next up: Stat**, then the rest of Phase 1 in order.
 
 ### Workflow per component
 
@@ -40,7 +40,7 @@ Read this file and CLAUDE.md first. **Next up: FileDropzone**, then the rest of 
 | MobileTopBar | 14:158 | MobileNav | 82:3 |
 | Screens | 4:4 | | |
 
-Done so far: Spinner 81:3, Button and IconButton 14:144, Input 14:145 (PasswordInput is Input plus the trailing slot), Textarea 49:111, Checkbox 39:3, FormField 14:146, Select 34:3, Badge 46:3, DatePicker 36:3.
+Done so far: Spinner 81:3, Button and IconButton 14:144, Input 14:145 (PasswordInput is Input plus the trailing slot), Textarea 49:111, Checkbox 39:3, FormField 14:146, Select 34:3, Badge 46:3, DatePicker 36:3, FileDropzone 49:132, Avatar 14:151.
 
 ### Things learned so far
 
@@ -60,6 +60,16 @@ Done so far: Spinner 81:3, Button and IconButton 14:144, Input 14:145 (PasswordI
 - **Dates** are `YYYY-MM-DD` strings throughout (`src/lib/calendarDate.ts`, unit tested): they match `date_applied` and compare as strings. No date library.
 - **DatePicker:** focus moves into the grid (roving tabindex); Esc returns it to the calendar button, choosing a day returns it to the input. Typed text is read on blur or Enter; bad text sets `aria-invalid` and calls `onInvalidInput`, and the form shows the FormField message. Month changes keep the old grid mounted (aria-hidden) for the 120ms slide-out, so query the live grid, not the wrapper.
 - **Deviation:** outside-month days use text/muted, not Figma's text/subtle, which is 2.7:1 on the dark overlay (they're selectable, so they need 4.5:1). Worth fixing in Figma.
+- **FileDropzone is controlled:** the parent owns `value`, `progress` and `error`; the dropzone checks type and size (`MAX_UPLOAD_BYTES`, `formatFileSize` in `src/lib/fileSize.ts`) and only calls `onSelect` with a valid PDF. Clearing `progress` while `value` is set shows Complete (about 400ms of drawing plus the 800ms hold), then Filled. On cancel, clear both `progress` and `value`.
+- **Enter motion after mount only:** `starting:` fades are applied once the component has mounted, so a form that opens with a file attached doesn't animate. Story tests that check an element right after an interaction should wait for it to finish fading (`toBecomeVisible` in the FileDropzone stories).
+- **AnimatedIcon** now takes `autoplay` (skipped under reduced motion; the library's explicit autoplay ignores it) and `speed`. `loadIconAnimation(name)` in `AnimatedIcon.animations.ts` warms up a chunk ahead of time. The `check` Lottie runs 1.47s, so FileDropzone plays it at 3.6×.
+- **`animate-pop-in`** starts from `--pop-from` (0.85 by default; FileDropzone uses 0.9).
+- **Drop events in story tests:** dispatch a native `DragEvent` with a real `DataTransfer`. `fireEvent.drop` rebuilds the dataTransfer from its own keys, so the files arrive empty.
+- **Deviation:** the row's remove motion is a fade with a slight `scale-y`, not a height collapse, since the empty zone (112px) is taller than the row (64px).
+- **Avatar** takes `src`, `initials` and `icon` and shows the first that works; a broken `src` is remembered, so a new one gets a fresh try. `getInitials(name)` is in `src/lib/initials.ts`. `alt` names the avatar whichever content shows (on the `<img>`, or `role="img"` on the wrapper); without it the avatar is decorative. Use it for company logos, since OpenGraph logos are often missing.
+- **Deviation:** the lg icon is 24px, not Figma's 25, to keep the 24px grid whole. lg initials use Heading/H3 (20/28), not Figma's 16px, which looked too small in 56px (sm 12, md 16, lg 20). Worth fixing in Figma.
+- **Stale Tailwind in the Storybook dev server:** new component files created while `pnpm storybook` is running may not get scanned, so classes only they use (Avatar's `size-8`, `size-14`) are missing and the story looks broken while tests pass. `touch .storybook/preview.css` makes it rescan. Compare against the dev server, not only a static build.
+- **Story size checks** use `getComputedStyle`, not `getBoundingClientRect`, which the Storybook zoom tool scales.
 - **No `any`, no `dark:` variants, no primitives in components.**
 
 ## Decisions
@@ -118,12 +128,12 @@ Inputs
 - [x] FormField (label, optional, control, hint, error)
 - [x] Select (field | badge), with parts Trigger, BadgeTrigger, Menu and Option (Popover API); Swatch is a separate component
 - [x] DatePicker (Popover API, calendar grid with keyboard navigation), with parts Calendar and DayCell
-- [ ] FileDropzone (PDF only, 10MB max)
+- [x] FileDropzone (PDF only, 10MB max), with part FileRow
 
 Display
 - [x] Badge
 - [x] Swatch
-- [ ] Avatar (falls back to initials when the image is missing or broken)
+- [x] Avatar (falls back to initials when the image is missing or broken)
 - [ ] Stat
 - [ ] ListItem
 - [ ] Card

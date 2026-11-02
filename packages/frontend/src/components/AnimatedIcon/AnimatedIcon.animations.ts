@@ -24,6 +24,7 @@ export const iconAnimations: Partial<Record<IconName, IconAnimation>> = {
   trash: { load: () => import('react-useanimations/lib/trash') },
   'log-out': { load: () => import('react-useanimations/lib/logOut'), interaction: 'hover-replay' },
   upload: { load: () => import('react-useanimations/lib/upload') },
+  'check-circle': { load: () => import('react-useanimations/lib/check') },
   'external-link': { load: () => import('react-useanimations/lib/externalLink') },
   dashboard: { load: () => import('react-useanimations/lib/grid') },
   briefcase: { load: () => import('react-useanimations/lib/briefcase') },
@@ -34,4 +35,24 @@ export const iconAnimations: Partial<Record<IconName, IconAnimation>> = {
   menu: { load: () => import('react-useanimations/lib/menu') },
   /** Toggle between eye-off and eye with `active` */
   eye: { load: () => import('react-useanimations/lib/visibility') },
+}
+
+// Loaded animations, shared by every instance so later mounts render animated straight away
+export const loadedAnimations = new Map<IconName, Animation>()
+
+/**
+ * Loads an icon's animation, or resolves undefined for static icons and failed chunks. Also
+ * for warming one up ahead of time, e.g. an icon that autoplays the moment it mounts.
+ */
+export function loadIconAnimation(name: IconName): Promise<Animation | undefined> {
+  const cached = loadedAnimations.get(name)
+  const entry = iconAnimations[name]
+  if (cached || !entry) return Promise.resolve(cached)
+  return entry.load().then(
+    (module) => {
+      loadedAnimations.set(name, module.default)
+      return module.default
+    },
+    () => undefined, // Keep the static icon if the chunk fails to load
+  )
 }

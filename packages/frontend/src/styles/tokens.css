@@ -205,7 +205,8 @@
      In over duration/base with ease/bounce; out over duration/fast with ease/in. */
   --animate-slide-in: slide-in var(--duration-base) var(--ease-bounce) both;
   --animate-slide-out: slide-out var(--duration-fast) var(--ease-in) both;
-  /* A selected fill appearing: from scale 0.85 over duration/base with ease/bounce */
+  /* Something appearing with a small pop, over duration/base with ease/bounce. Starts at
+     --pop-from: 0.85 by default (a selected fill); FileDropzone's status icons use 0.9. */
   --animate-pop-in: pop-in var(--duration-base) var(--ease-bounce) both;
 
   @keyframes slide-in {
@@ -222,7 +223,7 @@
   }
   @keyframes pop-in {
     from {
-      scale: 0.85;
+      scale: var(--pop-from, 0.85);
     }
   }
 

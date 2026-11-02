@@ -24,8 +24,12 @@ export interface AnimatedIconProps<T extends HTMLElement> extends AnimatedIconHa
   size?: number
   /** For toggle icons (`menu`, `eye`): true shows the end state */
   active?: boolean
-  /** Overrides the icon's default interaction, e.g. 'hover' */
+  /** Overrides the icon's default interaction, e.g. 'hover', or 'loop' to play continuously */
   interaction?: Interaction
+  /** Plays once on mount (e.g. FileDropzone's upload-complete check). Skipped for reduced motion. */
+  autoplay?: boolean
+  /** Playback speed; 1 is the Lottie's own timing */
+  speed?: number
   /** Classes for the icon itself */
   className?: string
   /**
