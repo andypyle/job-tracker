@@ -9,7 +9,10 @@ export interface StatProps
   /** A number counts up to its new value when it changes; a string (such as "—") shows as is */
   value: number | string
   sublabel?: string
-  /** Shows the skeleton. The label stays available to screen readers. */
+  /**
+   * Shows the skeleton, the same size as the loaded stat: pass the sublabel too to keep its line.
+   * The label stays available to screen readers.
+   */
   loading?: boolean
   /** Presents a numeric value, such as `(n) => \`${n}%\``. Defaults to `toLocaleString()`. */
   format?: (value: number) => string

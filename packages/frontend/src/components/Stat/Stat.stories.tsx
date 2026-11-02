@@ -53,6 +53,27 @@ export const Loading: Story = {
   },
 }
 
+/**
+ * The skeleton keeps the loaded size, with or without a sublabel, so nothing shifts when the value
+ * arrives. Pass the sublabel while loading to keep its line.
+ */
+export const LoadingKeepsSize: Story = {
+  decorators: [],
+  globals: { viewport: { value: 'desktop' } },
+  render: (args) => (
+    <div className="grid grid-cols-[repeat(2,--spacing(66))] gap-6">
+      <Stat {...args} />
+      <Stat {...args} loading />
+      <Stat {...args} sublabel={undefined} />
+      <Stat {...args} sublabel={undefined} loading />
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    const heights = Array.from(canvasElement.querySelectorAll('.grid > *'), (el) => getComputedStyle(el).height)
+    await expect(heights).toEqual(['132px', '132px', '112px', '112px'])
+  },
+}
+
 /** Any presentation of a number goes through `format` */
 export const Formatted: Story = {
   args: { label: 'Response Rate', value: 35, sublabel: 'Responses received', format: (n) => `${n}%` },
@@ -88,6 +109,7 @@ export const CountsUp: Story = {
 /** The Figma grid: every tone in subtle and strong, then loading */
 export const AllVariants: Story = {
   decorators: [],
+  globals: { viewport: { value: 'desktop' } },
   render: (args) => (
     <div className="grid grid-cols-[repeat(2,--spacing(66))] gap-6">
       {tones.map((tone) =>
@@ -99,14 +121,24 @@ export const AllVariants: Story = {
     </div>
   ),
   play: async ({ canvasElement }) => {
-    // The tone rule sits inside the padding, so every stat is the same 132px. Loading is 114px.
+    // The tone rule sits inside the padding, so every stat is the same 132px, loading too
     // Computed sizes, not getBoundingClientRect: the Storybook zoom tool scales the rect.
     const heights = Array.from(canvasElement.querySelectorAll('.grid > *'), (el) => getComputedStyle(el).height)
-    await expect(heights).toEqual([...Array(10).fill('132px'), '114px'])
+    await expect(heights).toEqual(Array(11).fill('132px'))
   },
 }
 
 export const AllVariantsDark: Story = {
   ...AllVariants,
-  globals: { theme: 'dark' },
+  globals: { theme: 'dark', viewport: { value: 'desktop' } },
+}
+
+/** Below md, as in the mobile Dashboard: 16px padding and a Heading/H1 value, so 116px, loading too */
+export const AllVariantsPhone: Story = {
+  ...AllVariants,
+  globals: { viewport: { value: 'phone' } },
+  play: async ({ canvasElement }) => {
+    const heights = Array.from(canvasElement.querySelectorAll('.grid > *'), (el) => getComputedStyle(el).height)
+    await expect(heights).toEqual(Array(11).fill('116px'))
+  },
 }

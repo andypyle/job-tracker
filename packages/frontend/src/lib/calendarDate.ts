@@ -92,6 +92,8 @@ const formatters = {
 export const formatShortDate = (iso: ISODate, today: ISODate = todayISO()) =>
   iso.slice(0, 4) === today.slice(0, 4) ? formatters.short.format(fromISODate(iso)) : formatDisplayDate(iso)
 
+/** "Oct 2" in any year, for chart axes where the year would crowd the label */
+export const formatMonthDay = (iso: ISODate) => formatters.short.format(fromISODate(iso))
 /** "Oct 21, 2026" */
 export const formatDisplayDate = (iso: ISODate) => formatters.display.format(fromISODate(iso))
 /** "Wednesday, October 21, 2026", for day buttons */

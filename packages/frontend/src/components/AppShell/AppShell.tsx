@@ -52,7 +52,7 @@ export function AppShell({ counts, user, onSignOut, onAddApplication, children, 
       <div className="flex min-w-0 flex-1 flex-col">
         <MobileTopBar className="md:hidden" />
         {/* tabIndex lets the skip link focus it */}
-        <main id="main" tabIndex={-1} className={cn('flex-1 outline-none', bottomBar && bottomBarClearance)}>
+        <main id="main" tabIndex={-1} className={cn('flex flex-1 flex-col outline-none', bottomBar && bottomBarClearance)}>
           {children}
         </main>
       </div>
