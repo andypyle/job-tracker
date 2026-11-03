@@ -8,15 +8,26 @@ on:
       - 'supabase/migrations/**'
   workflow_dispatch:
 
+permissions:
+  contents: read
+
+# Never run two migrations at once, and never cancel one partway
+concurrency:
+  group: migrate-production
+  cancel-in-progress: false
+
 jobs:
   migrate:
     runs-on: ubuntu-latest
+    # The Supabase secrets live in this environment, which only main can deploy to
+    environment: supabase-production
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
-      - uses: supabase/setup-cli@v1
+      # Matches the supabase devDependency in the root package.json
+      - uses: supabase/setup-cli@1dedf2c611547ede7232d26866dd3c56ab903bbb # v1.7.3
         with:
-          version: latest
+          version: 2.122.0
 
       - name: Link Supabase project
         run: supabase link --project-ref ${{ secrets.SUPABASE_PROJECT_REF }}
