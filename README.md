@@ -46,7 +46,7 @@ Some decisions worth calling out:
   - Story tests for every component and screen, with interaction tests in their `play` functions.
   - End-to-end tests that run the real stack: a local Supabase, the API and a production build.
 
-  CI runs all of them on every pull request.
+  CI runs all of them on every pull request, and production deploys wait for them to pass.
 
 ## Running it locally
 
