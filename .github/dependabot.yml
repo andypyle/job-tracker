@@ -1,0 +1,37 @@
+# Weekly version updates, grouped to keep the PR count down. Security updates are separate:
+# Dependabot opens those as soon as an advisory lands, regardless of this schedule.
+# The cooldown skips releases younger than a week, when a malicious publish is most likely to
+# still be live.
+version: 2
+updates:
+  # Keeps the SHA-pinned actions in .github/workflows current
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
+    groups:
+      actions:
+        patterns: ['*']
+
+  # The pnpm workspace (one lockfile at the root)
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
+    groups:
+      minor-and-patch:
+        update-types: [minor, patch]
+
+  - package-ecosystem: pip
+    directory: /backend
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
+    groups:
+      minor-and-patch:
+        update-types: [minor, patch]
