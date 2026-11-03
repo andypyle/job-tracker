@@ -9,9 +9,19 @@ CREATE TABLE user_settings (
   updated_at           TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+-- Its own trigger function: production doesn't have the update_updated_at() that
+-- 001_initial_schema.sql creates locally, so this migration can't rely on it
+CREATE OR REPLACE FUNCTION user_settings_set_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated_at = NOW();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SET search_path = '';
+
 CREATE TRIGGER trg_user_settings_updated_at
   BEFORE UPDATE ON user_settings
-  FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+  FOR EACH ROW EXECUTE FUNCTION user_settings_set_updated_at();
 
 ALTER TABLE user_settings ENABLE ROW LEVEL SECURITY;
 
