@@ -64,7 +64,7 @@ Copy `backend/.env.example` to `backend/.env` and `packages/frontend/.env.exampl
 # API on :8000
 cd backend
 python -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
+pip install -r requirements-dev.txt   # the app's dependencies plus pytest
 uvicorn app.main:app --reload --port 8000
 
 # Frontend on :5173 (from the repo root, in another terminal)

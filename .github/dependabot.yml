@@ -33,5 +33,8 @@ updates:
     cooldown:
       default-days: 7
     groups:
+      # pytest and pytest-asyncio pin each other's versions, so they move together, majors included
+      pytest:
+        patterns: ['pytest*']
       minor-and-patch:
         update-types: [minor, patch]
