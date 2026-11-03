@@ -1,2 +1,9 @@
 packages:
   - 'packages/*'
+
+# Security overrides for transitive dependencies with no upstream fix yet. Remove each one once
+# the package that pulls it in allows the fixed version.
+overrides:
+  # GHSA-3g3m-2fjr-6pw4 / GHSA-g3hv-75wg-m249: glob 13 (and its minimatch 10) come from
+  # @joshwooding/vite-plugin-react-docgen-typescript, via @storybook/react-vite
+  'glob@<14.0.2': ^14.0.3
