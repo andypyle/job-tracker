@@ -8,7 +8,7 @@
 import { chromium } from 'playwright'
 import { createServer } from 'node:http'
 import { readFile } from 'node:fs/promises'
-import { extname, join } from 'node:path'
+import { extname, join, resolve, sep } from 'node:path'
 
 const [root, out, ...ids] = process.argv.slice(2)
 if (!root || !out || ids.length === 0) {
@@ -24,8 +24,15 @@ const types = {
   '.json': 'application/json',
   '.svg': 'image/svg+xml',
 }
+// Serves only files inside the Storybook build, and only to this machine
+const base = resolve(root)
 const server = createServer(async (req, res) => {
-  const path = join(root, decodeURIComponent(req.url.split('?')[0]))
+  const path = resolve(base, '.' + decodeURIComponent(req.url.split('?')[0]))
+  if (!path.startsWith(base + sep)) {
+    res.writeHead(403)
+    res.end()
+    return
+  }
   try {
     const body = await readFile(path)
     res.writeHead(200, { 'content-type': types[extname(path)] ?? 'application/octet-stream' })
@@ -34,7 +41,7 @@ const server = createServer(async (req, res) => {
     res.writeHead(404)
     res.end()
   }
-}).listen(6111)
+}).listen(6111, '127.0.0.1')
 
 const browser = await chromium.launch()
 const page = await browser.newPage({
@@ -42,7 +49,7 @@ const page = await browser.newPage({
 })
 for (const entry of ids) {
   const [id, query = ''] = entry.split('|')
-  await page.goto(`http://localhost:6111/iframe.html?id=${id}&viewMode=story${query}`)
+  await page.goto(`http://127.0.0.1:6111/iframe.html?id=${id}&viewMode=story${query}`)
   await page.waitForSelector('#storybook-root > *')
   await page.evaluate(() => document.fonts.ready)
   await page.waitForTimeout(1200) // let animated icons load and settle

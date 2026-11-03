@@ -1,12 +1,17 @@
+import asyncio
+import ipaddress
 import json
 import re
-from urllib.parse import urlparse
+import socket
+from urllib.parse import urljoin, urlparse
 
 import httpx
 from bs4 import BeautifulSoup
 
 _USER_AGENT = "Mozilla/5.0 (compatible; JobTrackerBot/1.0)"
 _TIMEOUT = 5.0
+_MAX_REDIRECTS = 5
+_REDIRECT_STATUSES = {301, 302, 303, 307, 308}
 _TITLE_SUFFIX_RE = re.compile(r"\s*[\|\-–—]\s*\S.*$")
 # Matches "at Company Name" inside a page title, stopping at common separators
 _TITLE_AT_RE = re.compile(r"\bat\s+([^|\-–—]{2,60})", re.IGNORECASE)
@@ -170,16 +175,72 @@ def _scan_salary(soup: BeautifulSoup, ld: dict) -> str | None:
     return None
 
 
+class UnsafeURLError(ValueError):
+    """The URL isn't a public web page this server should fetch."""
+
+
+async def _resolve(host: str, port: int) -> list[str]:
+    infos = await asyncio.get_running_loop().getaddrinfo(host, port, type=socket.SOCK_STREAM)
+    return [info[4][0] for info in infos]
+
+
+async def _check_public_url(url: str) -> None:
+    """
+    Raise UnsafeURLError unless the URL is http(s) on a default port and every address its
+    host resolves to is public. Stops the scraper reaching localhost, the private network or
+    cloud metadata endpoints (SSRF). A DNS answer that changes between this check and the
+    request (rebinding) isn't covered.
+    """
+    parsed = urlparse(url)
+    if parsed.scheme not in ("http", "https") or not parsed.hostname:
+        raise UnsafeURLError("Only http and https URLs are allowed")
+    try:
+        port = parsed.port
+    except ValueError as exc:
+        raise UnsafeURLError("Invalid port") from exc
+    if port not in (None, 80, 443):
+        raise UnsafeURLError("Only the default ports are allowed")
+
+    try:
+        ipaddress.ip_address(parsed.hostname)
+        addresses = [parsed.hostname]  # an IP literal: nothing to resolve
+    except ValueError:
+        try:
+            addresses = await _resolve(parsed.hostname, port or (443 if parsed.scheme == "https" else 80))
+        except OSError as exc:
+            raise UnsafeURLError("Host doesn't resolve") from exc
+    for address in addresses:
+        ip = ipaddress.ip_address(address.split("%")[0])
+        if isinstance(ip, ipaddress.IPv6Address) and ip.ipv4_mapped:
+            ip = ip.ipv4_mapped
+        if not ip.is_global or ip.is_multicast:
+            raise UnsafeURLError("Host resolves to a non-public address")
+
+
+async def _get_public_page(client: httpx.AsyncClient, url: str) -> httpx.Response:
+    """GET the URL, following redirects by hand so every hop passes _check_public_url."""
+    for _ in range(_MAX_REDIRECTS + 1):
+        await _check_public_url(url)
+        response = await client.get(url)
+        if response.status_code not in _REDIRECT_STATUSES:
+            return response
+        location = response.headers.get("location")
+        if not location:
+            return response
+        url = urljoin(url, location)
+    raise UnsafeURLError("Too many redirects")
+
+
 async def fetch_opengraph(url: str) -> dict:
     result = {"title": None, "company": None, "logo_url": None, "compensation": None}
 
     try:
         async with httpx.AsyncClient(
             timeout=_TIMEOUT,
-            follow_redirects=True,
+            follow_redirects=False,
             headers={"User-Agent": _USER_AGENT},
         ) as client:
-            response = await client.get(url)
+            response = await _get_public_page(client, url)
             response.raise_for_status()
             html = response.text
 

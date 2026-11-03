@@ -11,6 +11,22 @@ import pytest
 
 from app.services.opengraph import fetch_opengraph
 
+# Every host resolves to a public address unless a test says otherwise, so no test does real DNS
+PUBLIC_IP = "93.184.216.34"
+
+
+@pytest.fixture(autouse=True)
+def fake_dns():
+    """Map hostnames to addresses for the SSRF guard; unknown hosts get PUBLIC_IP."""
+    answers: dict[str, list[str]] = {}
+
+    async def resolve(host, port):
+        return answers.get(host, [PUBLIC_IP])
+
+    with patch("app.services.opengraph._resolve", side_effect=resolve):
+        yield answers
+
+
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -317,8 +333,164 @@ async def test_fetch_opengraph_returns_nulls_on_non_200_response():
 
 
 # ---------------------------------------------------------------------------
+# SSRF guard: only public http(s) pages, checked on every redirect hop
+# ---------------------------------------------------------------------------
+
+EMPTY = {"title": None, "company": None, "logo_url": None, "compensation": None}
+
+
+def _mock_client(*responses):
+    """Patch httpx.AsyncClient so successive get() calls return the given responses."""
+    patcher = patch("httpx.AsyncClient")
+    MockClient = patcher.start()
+    instance = AsyncMock()
+    instance.get = AsyncMock(side_effect=list(responses))
+    MockClient.return_value.__aenter__ = AsyncMock(return_value=instance)
+    MockClient.return_value.__aexit__ = AsyncMock(return_value=False)
+    return patcher, instance
+
+
+def _redirect(location: str, status_code: int = 302):
+    response = MagicMock(spec=httpx.Response)
+    response.status_code = status_code
+    response.headers = {"location": location}
+    return response
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "address",
+    [
+        "127.0.0.1",  # loopback
+        "10.0.0.5",  # private
+        "192.168.1.1",  # private
+        "169.254.169.254",  # cloud metadata (link-local)
+        "100.64.0.1",  # carrier-grade NAT
+        "0.0.0.0",
+        "::1",
+        "fd12:3456::1",  # IPv6 unique local, as on Railway's private network
+        "::ffff:127.0.0.1",  # IPv4-mapped loopback
+    ],
+)
+async def test_fetch_opengraph_refuses_hosts_that_resolve_to_non_public_addresses(fake_dns, address):
+    fake_dns["internal.example.com"] = [address]
+    patcher, client = _mock_client(_mock_httpx_response(_make_html_response(og_title="Secret")))
+    try:
+        result = await fetch_opengraph("https://internal.example.com/admin")
+    finally:
+        patcher.stop()
+
+    assert result == EMPTY
+    client.get.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_fetch_opengraph_refuses_a_host_with_any_non_public_address(fake_dns):
+    """One private address among public ones is enough to refuse."""
+    fake_dns["mixed.example.com"] = [PUBLIC_IP, "10.0.0.5"]
+    patcher, client = _mock_client(_mock_httpx_response(_make_html_response(og_title="Secret")))
+    try:
+        result = await fetch_opengraph("https://mixed.example.com/")
+    finally:
+        patcher.stop()
+
+    assert result == EMPTY
+    client.get.assert_not_called()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "url",
+    [
+        "file:///etc/passwd",
+        "ftp://example.com/job",
+        "gopher://example.com/",
+        "https://example.com:8443/job",  # non-default port
+        "http://127.0.0.1/",  # IP literals go through the same check
+        "http://[::1]/",
+        "http://169.254.169.254/latest/meta-data/",
+        "https:///no-host",
+    ],
+)
+async def test_fetch_opengraph_refuses_unsupported_urls(url):
+    patcher, client = _mock_client(_mock_httpx_response(_make_html_response(og_title="Secret")))
+    try:
+        result = await fetch_opengraph(url)
+    finally:
+        patcher.stop()
+
+    assert result == EMPTY
+    client.get.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_fetch_opengraph_follows_redirects_to_public_pages():
+    patcher, client = _mock_client(
+        _redirect("/jobs/123-senior-engineer", status_code=301),
+        _mock_httpx_response(_make_html_response(og_title="Senior Engineer")),
+    )
+    try:
+        result = await fetch_opengraph("https://acme.com/j/123")
+    finally:
+        patcher.stop()
+
+    assert result["title"] == "Senior Engineer"
+    assert [call.args[0] for call in client.get.call_args_list] == [
+        "https://acme.com/j/123",
+        "https://acme.com/jobs/123-senior-engineer",
+    ]
+
+
+@pytest.mark.asyncio
+async def test_fetch_opengraph_refuses_a_redirect_to_a_non_public_address(fake_dns):
+    """A public page can't bounce the server to an internal one."""
+    fake_dns["metadata.internal"] = ["169.254.169.254"]
+    patcher, client = _mock_client(
+        _redirect("http://metadata.internal/latest/meta-data/"),
+        _mock_httpx_response(_make_html_response(og_title="Secret")),
+    )
+    try:
+        result = await fetch_opengraph("https://acme.com/jobs/1")
+    finally:
+        patcher.stop()
+
+    assert result == EMPTY
+    assert client.get.call_count == 1
+
+
+@pytest.mark.asyncio
+async def test_fetch_opengraph_gives_up_after_too_many_redirects():
+    patcher, client = _mock_client(*[_redirect(f"/hop/{i}") for i in range(10)])
+    try:
+        result = await fetch_opengraph("https://acme.com/start")
+    finally:
+        patcher.stop()
+
+    assert result == EMPTY
+    assert client.get.call_count == 6  # the first request and five redirects
+
+
+# ---------------------------------------------------------------------------
 # POST /opengraph endpoint test
 # ---------------------------------------------------------------------------
+
+
+def test_opengraph_endpoint_requires_sign_in():
+    """Anonymous callers can't make the server fetch anything."""
+    from fastapi.testclient import TestClient
+
+    from app.main import app
+
+    with (
+        patch("app.main.start_scheduler"),
+        patch("app.main.stop_scheduler"),
+        patch("app.routers.opengraph.fetch_opengraph") as fetch,
+        TestClient(app) as anonymous,
+    ):
+        resp = anonymous.post("/opengraph", json={"url": "https://acme.com/jobs/1"})
+
+    assert resp.status_code in (401, 422)
+    fetch.assert_not_called()
 
 
 def test_opengraph_endpoint_returns_envelope(client):
