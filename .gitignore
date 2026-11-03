@@ -19,8 +19,9 @@ __pycache__/
 # TaskMaster — config contains API keys, don't commit it
 .taskmaster/config.json
 
-# Local DB seed — contains personal data from live DB dump
-supabase/seed.sql
+# Local DB seed — contains personal data from live DB dump. Loaded after the
+# synthetic supabase/seed.sql (see supabase/config.toml).
+supabase/seed.local.sql
 
 # pnpm
 .pnpm-store/
@@ -50,3 +51,7 @@ tasks/
 
 *storybook.log
 storybook-static
+
+# Playwright
+packages/frontend/test-results/
+packages/frontend/playwright-report/
