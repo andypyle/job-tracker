@@ -1,7 +1,5 @@
 # CLAUDE.md
 
-**Git:** never attribute work to Claude in commit messages or PR descriptions — no `Co-Authored-By: Claude`, no "Generated with Claude Code" lines.
-
 Job application tracker. pnpm monorepo: React frontend in `packages/frontend`, shared TS types in `packages/shared` (`@jobtracker/shared`), Python FastAPI backend in `backend/` (not a pnpm workspace member).
 
 ## Running locally
