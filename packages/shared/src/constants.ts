@@ -1,4 +1,4 @@
-import type { ApplicationStatus } from './types.js'
+import type { ApplicationStatus, UnlikelyAfterDays } from './types.js'
 
 /** The design system's color families (color/tone/*). Matches `Tone` in the frontend's `lib/tone.ts`. */
 export type StatusTone = 'neutral' | 'info' | 'warning' | 'positive' | 'danger'
@@ -27,3 +27,9 @@ export const STATUS_LABELS: Record<ApplicationStatus, string> = {
   Rejected: 'Rejected',
   'Role Eliminated': 'Role Eliminated',
 }
+
+/** The choices for `UserSettings.unlikely_after_days`, besides null (never) */
+export const UNLIKELY_AFTER_DAYS_OPTIONS = [7, 14, 21, 30, 60] as const satisfies readonly UnlikelyAfterDays[]
+
+/** For users who have never saved settings; matches the backend and the column default */
+export const DEFAULT_UNLIKELY_AFTER_DAYS: UnlikelyAfterDays = 14

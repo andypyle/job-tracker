@@ -199,7 +199,7 @@ function FileLink({ path, url }: { path: string; url?: string }) {
   return url ? <ExternalLink href={url}>{fileName(path)}</ExternalLink> : <>{fileName(path)}</>
 }
 
-/** Newest first. The app's own changes (Unlikely after 2 weeks) are system events, no badge. */
+/** Newest first. The app's own changes (the nightly move to Unlikely) are system events, no badge. */
 function StatusHistory({ application }: { application: Application }) {
   const history = historyNewestFirst(application.status_history ?? [])
   if (history.length === 0) return <p className="text-body-small text-text-muted">No status changes yet.</p>

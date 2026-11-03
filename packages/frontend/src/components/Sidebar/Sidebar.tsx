@@ -25,7 +25,7 @@ interface Marker {
 
 /**
  * 240px: the brand, Dashboard, the Jobs links with counts, and the account block with
- * Sign out. When the route changes, the active marker slides to the new item.
+ * Settings and Sign out. When the route changes, the active marker slides to the new item.
  */
 export function Sidebar({ counts, user, onSignOut, className, ...props }: SidebarProps) {
   const jobsId = useId()
@@ -124,6 +124,10 @@ export function Sidebar({ counts, user, onSignOut, className, ...props }: Sideba
             {user.email && <span className="truncate text-caption-regular text-text-muted">{user.email}</span>}
           </div>
         </div>
+        {/* Outside the nav, so it paints its own current state rather than taking the marker */}
+        <NavItem to="/settings" icon="settings">
+          Settings
+        </NavItem>
         <AnimatedIcon<HTMLButtonElement>
           name="log-out"
           size={20}

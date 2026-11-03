@@ -90,3 +90,19 @@ export interface TimelineStats {
   avg_interview_to_outcome_days: number | null
   sample_sizes: TimelineStatsSampleSizes
 }
+
+// ---------------------------------------------------------------------------
+// User settings
+// ---------------------------------------------------------------------------
+
+/** How long an application can sit in Applied before the nightly job moves it to Unlikely */
+export type UnlikelyAfterDays = 7 | 14 | 21 | 30 | 60
+
+/** Shape of GET /settings. A user who has never saved settings gets the defaults. */
+export interface UserSettings {
+  /** null turns the nightly move to Unlikely off */
+  unlikely_after_days: UnlikelyAfterDays | null
+}
+
+/** Body of PATCH /settings. Every field is required: null means never, not "unchanged". */
+export type UserSettingsUpdate = UserSettings

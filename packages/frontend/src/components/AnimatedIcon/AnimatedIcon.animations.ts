@@ -32,6 +32,7 @@ export const iconAnimations: Partial<Record<IconName, IconAnimation>> = {
   briefcase: { load: () => import('react-useanimations/lib/briefcase') },
   clock: { load: () => import('react-useanimations/lib/clock') },
   calendar: { load: () => import('react-useanimations/lib/calendar') },
+  settings: { load: () => import('react-useanimations/lib/settings'), interaction: 'hover-replay' },
   ban: { load: () => import('react-useanimations/lib/slash') },
   /**
    * Toggle: `active` shows the x. menu2, because `menu` ends on a burger, not an x. A toggle

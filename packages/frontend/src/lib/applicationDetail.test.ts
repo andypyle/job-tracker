@@ -40,7 +40,7 @@ describe('describeChange', () => {
     expect(describeChange(change('Applied', 'Interviewing'))).toBe('Moved from Applied to Interviewing')
     expect(describeChange(change('Interviewing', 'Role Eliminated'))).toBe('Moved from Interviewing to Role Eliminated')
     expect(describeChange(change('Applied', 'Unlikely', undefined, true))).toBe(
-      'Marked Unlikely after 2 weeks with no status change',
+      'Marked Unlikely after no status change in Applied',
     )
     expect(describeChange(change('Applied', 'Rejected', undefined, true))).toBe('Moved to Rejected automatically')
   })

@@ -57,9 +57,9 @@ export function MobileNav({ counts, user, onSignOut, floating = true, className 
     }
     place()
     if (!el.open) el.showModal()
-    // Start on the current page rather than the first focusable item, which is Sign out
-    const links = nav.current?.querySelectorAll<HTMLElement>('a')
-    ;(nav.current?.querySelector<HTMLElement>('[aria-current=page]') ?? links?.[0])?.focus()
+    // Start on the current page (Settings is up in the account block) rather than the first
+    // focusable item; with none current, on the first page link
+    ;(el.querySelector<HTMLElement>('a[aria-current=page]') ?? nav.current?.querySelector<HTMLElement>('a'))?.focus()
     window.addEventListener('resize', place)
     return () => window.removeEventListener('resize', place)
   }, [open])
@@ -134,13 +134,18 @@ export function MobileNav({ counts, user, onSignOut, floating = true, className 
         >
           {/* Account first, farthest from the thumb: it's used least */}
           <div className="flex flex-col gap-1 px-2 pt-2">
-            <div className={cn('flex items-center gap-3 px-1 py-2', staggerItem)} style={stagger(6)}>
+            <div className={cn('flex items-center gap-3 px-1 py-2', staggerItem)} style={stagger(7)}>
               {/* Decorative: the name is next to it */}
               <Avatar size="md" initials={getInitials(user.name)} />
               <div className="flex min-w-0 flex-1 flex-col">
                 <span className="truncate text-label-base text-text-primary">{user.name}</span>
                 {user.email && <span className="truncate text-caption-regular text-text-muted">{user.email}</span>}
               </div>
+            </div>
+            <div className={staggerItem} style={stagger(6)}>
+              <NavItem to="/settings" icon="settings" onClick={close}>
+                Settings
+              </NavItem>
             </div>
             <AnimatedIcon<HTMLButtonElement>
               name="log-out"

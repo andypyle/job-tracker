@@ -11,7 +11,7 @@ export function historyNewestFirst(history: readonly StatusChange[]): StatusChan
 /** The event line for a status change: "Moved from Applied to Interviewing" */
 export function describeChange({ old_status, new_status, is_automatic }: StatusChange): string {
   if (old_status === null) return 'Application created'
-  if (is_automatic && new_status === 'Unlikely') return 'Marked Unlikely after 2 weeks with no status change'
+  if (is_automatic && new_status === 'Unlikely') return 'Marked Unlikely after no status change in Applied'
   if (is_automatic) return `Moved to ${STATUS_LABELS[new_status]} automatically`
   return `Moved from ${STATUS_LABELS[old_status]} to ${STATUS_LABELS[new_status]}`
 }

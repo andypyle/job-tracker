@@ -18,8 +18,8 @@ export function useAddApplication() {
 }
 
 /**
- * The signed-in route element: AppShell wired to auth and the counts. Application detail has no
- * Bottom bar (the MobileNav trigger floats); every other page has one.
+ * The signed-in route element: AppShell wired to auth and the counts. Application detail and
+ * Settings have no Bottom bar (the MobileNav trigger floats); every other page has one.
  */
 export function AppLayout() {
   const { user, signOut } = useAuth()
@@ -27,6 +27,7 @@ export function AppLayout() {
   const saveApplication = useSaveApplication()
   const { isLoading, ...counts } = useApplicationCounts()
   const onDetail = useMatch('/jobs/detail/:id') !== null
+  const onSettings = useMatch('/settings') !== null
   const [adding, setAdding] = useState(false)
   const openAddApplication = () => setAdding(true)
 
@@ -38,7 +39,7 @@ export function AppLayout() {
         await signOut()
         navigate('/login')
       }}
-      onAddApplication={onDetail ? undefined : openAddApplication}
+      onAddApplication={onDetail || onSettings ? undefined : openAddApplication}
     >
       <Outlet context={{ openAddApplication } satisfies AppLayoutContext} />
       <ApplicationDialog

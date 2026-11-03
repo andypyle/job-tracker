@@ -393,8 +393,14 @@ The "worth fixing in Figma" notes above are done in Figma, so the file matches t
 - **New frames** (to the right of each row on Screens): Sign up, check your email; Skip link focused; Jobs: Active, no matches and none active; Jobs: Unlikely, empty; Jobs: Rejected and Rejected, empty; Edit application; Application detail, not found and loading. On the Toast page there's also a "Toasts in the app" frame with the product's copy.
 - **Left as notes in Figma, still open:** in Dark mode, avatar/bg, tone/neutral/soft and bg/nav-active are all pine-800 (noted on Avatar, ListItem and NavItem); one-word initials ("F" vs "FN", noted on Avatar).
 
+## Settings (designed and built 2026-11-03)
+
+- **Figma:** a "Settings" page under Patterns holds the Card bodies (`Settings/Profile`, `Email`, `Password`, `Tracking`, `DeleteAccount`) and the dialog body (`Settings/DeleteAccountConfirm`). Screens has a Settings row at y=16400 (desktop and phone, light and dark, plus "Unlikely menu open") and a Delete account row at y=18700. `Icon/settings` is new, and the Sidebar and MobileNav panel have a Settings item above Sign out.
+- **PageHeader:** a new `Show actions` boolean hides the Actions frame, matching code where `actions` is omitted. The Phone variants' Actions now hug and the description hugs its height (before, an empty Actions frame took half the row and clipped the description).
+- **Code:** `src/pages/SettingsPage.tsx` (Screen and Page), stories under Screens/Settings, `e2e/settings.e2e.ts`. Backend: `user_settings` (migration `20261103_user_settings.sql`), `GET`/`PATCH /settings`, `DELETE /account`, and the per-user cutoff in `transition_unlikely`.
+- One Primary save per card; each card is its own form. The password change doesn't ask for the current password. Delete account needs the email typed to confirm.
+
 ## Not designed yet (out of scope for this pass)
 
 - Unlikely and Empty on mobile (adapt the existing mobile layouts)
-- Settings
 - Onboarding beyond the empty state

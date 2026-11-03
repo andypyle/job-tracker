@@ -73,7 +73,20 @@ export const Open: Story = {
     // Visible once the items have faded in
     await settle()
     await expect(dialog.getByText('Alex Rivera')).toBeVisible()
+    await expect(dialog.getByRole('link', { name: 'Settings' })).toHaveAttribute('href', '/settings')
     await expect(dialog.getByRole('button', { name: 'Sign out' })).toBeVisible()
+  },
+}
+
+/** On Settings, focus starts on its link in the account block */
+export const OpenOnSettings: Story = {
+  parameters: { route: '/settings' },
+  play: async ({ canvas }) => {
+    await openPanel(canvas)
+    const settings = inPanel().getByRole('link', { name: 'Settings' })
+    await expect(settings).toHaveAttribute('aria-current', 'page')
+    await expect(settings).toHaveFocus()
+    await settle()
   },
 }
 
