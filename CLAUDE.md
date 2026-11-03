@@ -13,6 +13,8 @@ cd backend && source .venv/bin/activate && uvicorn app.main:app --reload --port 
 
 Env templates are `packages/frontend/.env.example` and `backend/.env.example`. Never commit `.env` files.
 
+Local Supabase seeds from `supabase/seed.sql`: synthetic data with a demo login (`demo@example.com` / `demo-password`), also used by CI and E2E. A real data dump can go in the gitignored `supabase/seed.local.sql`, which loads after it. Never commit real data.
+
 ## Architecture rules
 
 - **Data flow:** the frontend uses Supabase **only for auth** (`src/lib/supabase.ts`). All data goes through the FastAPI backend via the functions in `src/lib/api.ts`, which attaches the Supabase JWT. Never call `fetch`/axios or query Supabase tables directly from components.
@@ -102,6 +104,7 @@ Run these from `packages/frontend`:
 | `pnpm test:storybook` | Runs every story as a test in headless Chromium: render, `play` function, axe a11y checks |
 | `pnpm test:unit` | Vitest + jsdom unit tests (MSW server in `src/test/`) |
 | `pnpm test` | Both projects |
+| `pnpm test:e2e` | Playwright against the real stack (`e2e/*.e2e.ts`). Needs local Supabase running (`pnpm exec supabase start` from the repo root) and the backend's venv active; Playwright starts the backend on :8001 and a production build on :4173 |
 
 Accessibility violations fail story tests (`a11y.test: 'error'` in `.storybook/preview.tsx`). Fix the violation; only opt a story out with `parameters: { a11y: { test: 'todo' } }` when there's a documented reason. Import story types from `@storybook/react-vite` and test utilities from `storybook/test`.
 
