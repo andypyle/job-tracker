@@ -54,6 +54,16 @@ const preview: Preview = {
     },
   },
   initialGlobals: { theme: 'light' },
+  // Webfonts load lazily, so a play function can measure text in the fallback font. On Linux
+  // (CI) that's DejaVu Sans, which is wide enough to wrap lines and change heights.
+  loaders: [
+    async () => {
+      await Promise.all([
+        document.fonts.load('700 16px "Gabarito"'),
+        document.fonts.load('400 16px "Atkinson Hyperlegible Next Variable"'),
+      ])
+    },
+  ],
   decorators: [
     // Tokens use light-dark(), so setting color-scheme switches every token.
     // A story can pin a mode with `globals: { theme: 'dark' }`.
