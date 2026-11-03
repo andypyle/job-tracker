@@ -52,6 +52,7 @@ const meta = {
   globals: { viewport: { value: 'desktop' } },
   args: {
     applications,
+    unlikelyAfterDays: 14,
     onStatusChange: fn(async () => {}),
     onAddApplication: fn(),
   },
@@ -85,7 +86,7 @@ export const Default: Story = {
   play: async ({ canvas, args }) => {
     const main = within(canvas.getByRole('main'))
     await expect(main.getByRole('heading', { level: 1, name: 'Unlikely' })).toBeVisible()
-    await expect(main.getByText('No status change in 2 weeks. Change a status to move it back.')).toBeVisible()
+    await expect(main.getByText('No status change in 14 days. Change a status to move it back.')).toBeVisible()
 
     // One list, no group headings, newest first (Figma's frame is oldest first); other lists' rows stay out
     await expect(main.queryAllByRole('heading', { level: 2 })).toHaveLength(0)
@@ -175,8 +176,19 @@ export const Empty: Story = {
   play: async ({ canvas }) => {
     const main = within(canvas.getByRole('main'))
     await expect(main.getByRole('heading', { level: 2, name: 'Nothing unlikely' })).toBeVisible()
+    await expect(main.getByText('Applications move here after 14 days in Applied with no status change.')).toBeVisible()
     await expect(main.queryByRole('searchbox')).not.toBeInTheDocument()
     await expect(main.getByRole('button', { name: 'Add application' })).toBeVisible()
+  },
+}
+
+/** The copy follows the user's cutoff from Settings, and says when the move is off */
+export const MoveOff: Story = {
+  args: { applications: [], unlikelyAfterDays: null },
+  play: async ({ canvas }) => {
+    const main = within(canvas.getByRole('main'))
+    await expect(main.getByText('The automatic move is off. Change a status to move one back.')).toBeVisible()
+    await expect(main.getByText('The automatic move to Unlikely is off. You can turn it on in Settings.')).toBeVisible()
   },
 }
 

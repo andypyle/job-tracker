@@ -12,7 +12,7 @@ export interface TestUser {
 /** The seeded account (supabase/seed.sql). Read-only: tests that change data use `user`. */
 export const demoUser = { email: 'demo@example.com', password: 'demo-password' }
 
-const admin = createClient(supabaseEnv.url, supabaseEnv.serviceRoleKey, {
+export const admin = createClient(supabaseEnv.url, supabaseEnv.serviceRoleKey, {
   auth: { autoRefreshToken: false, persistSession: false },
 })
 

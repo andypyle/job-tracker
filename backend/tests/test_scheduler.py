@@ -1,116 +1,201 @@
 """
 Tests for the scheduler's transition_unlikely() function.
 
-No real Supabase connection is made — the client is fully mocked.
+No real Supabase connection is made: FakeClient records each query's calls and returns canned rows.
 """
 from datetime import datetime, timedelta, timezone
-from unittest.mock import MagicMock, call, patch
+from unittest.mock import patch
 
 import pytest
 
-from app.services.scheduler import transition_unlikely
+from app.services.scheduler import group_users_by_cutoff, transition_unlikely
 
 
-def _make_supabase_chain_mock(data=None, raise_exc=None):
+class FakeQuery:
+    """A chainable query builder that records each call as (method, args)."""
+
+    def __init__(self, table: str, result=None, error: Exception | None = None):
+        self.table = table
+        self.calls: list[tuple[str, tuple]] = []
+        self._result = result or []
+        self._error = error
+
+    def __getattr__(self, name):
+        # `not_` is a property on the real builder; the rest are methods
+        if name == "not_":
+            self.calls.append(("not_", ()))
+            return self
+
+        def method(*args, **kwargs):
+            self.calls.append((name, args))
+            return self
+
+        return method
+
+    def execute(self):
+        if self._error:
+            raise self._error
+
+        class Result:
+            data = self._result
+
+        return Result()
+
+    def args(self, method: str) -> list[tuple]:
+        return [args for name, args in self.calls if name == method]
+
+
+class FakeClient:
     """
-    Build a mock supabase client whose table/update/eq/lte/execute chain
-    behaves correctly.
+    Hands out a FakeQuery per table() call. `results` maps a table to the rows each successive
+    query returns (one list per query); `errors` maps a table to an exception its queries raise.
     """
-    execute_mock = MagicMock()
-    if raise_exc:
-        execute_mock.side_effect = raise_exc
-    else:
-        result = MagicMock()
-        result.data = data or []
-        execute_mock.return_value = result
 
-    chain = MagicMock()
-    chain.execute = execute_mock
-    chain.eq = MagicMock(return_value=chain)
-    chain.lte = MagicMock(return_value=chain)
-    chain.update = MagicMock(return_value=chain)
+    def __init__(self, results: dict[str, list[list[dict]]] | None = None, errors: dict | None = None):
+        self.results = {table: list(rows) for table, rows in (results or {}).items()}
+        self.errors = errors or {}
+        self.queries: list[FakeQuery] = []
 
-    table_mock = MagicMock()
-    table_mock.update = MagicMock(return_value=chain)
+    def table(self, name: str) -> FakeQuery:
+        rows = self.results.get(name, [])
+        query = FakeQuery(name, rows.pop(0) if rows else [], self.errors.get(name))
+        self.queries.append(query)
+        return query
 
-    client_mock = MagicMock()
-    client_mock.table = MagicMock(return_value=table_mock)
+    def updates(self) -> list[FakeQuery]:
+        return [q for q in self.queries if q.table == "applications"]
 
-    return client_mock, chain
+    def history_inserts(self) -> list[FakeQuery]:
+        return [q for q in self.queries if q.table == "application_status_history"]
 
 
-@pytest.mark.asyncio
-async def test_transition_unlikely_updates_old_applied():
-    """
-    transition_unlikely() calls supabase update with status='Unlikely'
-    filtered to Applied rows whose date_applied is <= (today - 14 days).
-    """
-    updated_rows = [
-        {"id": "app-1", "status": "Unlikely"},
-        {"id": "app-2", "status": "Unlikely"},
+def _cutoff_days(query: FakeQuery) -> float:
+    """How many days before now the query's date_applied cutoff is."""
+    [(field, value)] = query.args("lte")
+    assert field == "date_applied"
+    return (datetime.now(tz=timezone.utc) - datetime.fromisoformat(value)) / timedelta(days=1)
+
+
+async def _run(client: FakeClient):
+    with patch("app.services.scheduler.create_client", return_value=client):
+        await transition_unlikely()
+
+
+# ---------------------------------------------------------------------------
+# group_users_by_cutoff
+# ---------------------------------------------------------------------------
+
+
+def test_group_users_by_cutoff_splits_custom_and_never():
+    rows = [
+        {"user_id": "a", "unlikely_after_days": 7},
+        {"user_id": "b", "unlikely_after_days": 30},
+        {"user_id": "c", "unlikely_after_days": 7},
+        {"user_id": "d", "unlikely_after_days": None},
+        # The default needs no group of its own
+        {"user_id": "e", "unlikely_after_days": 14},
     ]
-    client_mock, chain = _make_supabase_chain_mock(data=updated_rows)
+    custom, never = group_users_by_cutoff(rows)
+    assert custom == {7: ["a", "c"], 30: ["b"]}
+    assert never == ["d"]
 
-    with patch("app.services.scheduler.create_client", return_value=client_mock):
-        await transition_unlikely()
 
-    # update({"status": "Unlikely"}) should have been called
-    table_mock = client_mock.table.return_value
-    table_mock.update.assert_called_once_with({"status": "Unlikely"})
+def test_group_users_by_cutoff_with_no_rows():
+    assert group_users_by_cutoff([]) == ({}, [])
 
-    # eq("status", "Applied") must have been called
-    eq_calls = chain.eq.call_args_list
-    eq_status_call = [c for c in eq_calls if c.args == ("status", "Applied")]
-    assert len(eq_status_call) == 1, f"Expected eq('status','Applied'), got: {eq_calls}"
 
-    # lte("date_applied", <cutoff>) must have been called
-    lte_calls = chain.lte.call_args_list
-    assert len(lte_calls) == 1
-    lte_field = lte_calls[0].args[0]
-    assert lte_field == "date_applied"
+# ---------------------------------------------------------------------------
+# transition_unlikely
+# ---------------------------------------------------------------------------
 
 
 @pytest.mark.asyncio
-async def test_transition_unlikely_uses_14_day_cutoff():
-    """
-    The cutoff date passed to .lte() must be exactly 14 days ago (not 13).
-    """
-    client_mock, chain = _make_supabase_chain_mock(data=[])
+async def test_transition_unlikely_without_settings_uses_14_days_for_everyone():
+    """With no user_settings rows: one update, Applied rows older than 14 days, no user filter."""
+    client = FakeClient()
+    await _run(client)
 
-    now = datetime.now(tz=timezone.utc)
-    expected_cutoff = now - timedelta(days=14)
+    [update] = client.updates()
+    assert update.args("update") == [({"status": "Unlikely"},)]
+    assert update.args("eq") == [("status", "Applied")]
+    assert abs(_cutoff_days(update) - 14) < 0.001
+    assert update.args("in_") == []
+    assert ("not_", ()) not in update.calls
 
-    with patch("app.services.scheduler.create_client", return_value=client_mock):
-        await transition_unlikely()
 
-    lte_calls = chain.lte.call_args_list
-    assert len(lte_calls) == 1
-    actual_cutoff_str = lte_calls[0].args[1]
-
-    # Parse back and verify it is close to 14 days ago (within 5 seconds tolerance)
-    actual_cutoff = datetime.fromisoformat(actual_cutoff_str)
-    diff = abs((actual_cutoff - expected_cutoff).total_seconds())
-    assert diff < 5, (
-        f"Expected cutoff ~14 days ago, got {actual_cutoff_str} "
-        f"(diff={diff:.1f}s from {expected_cutoff.isoformat()})"
+@pytest.mark.asyncio
+async def test_transition_unlikely_applies_each_users_cutoff():
+    """The default update skips users with their own cutoff or none; each custom cutoff gets one."""
+    client = FakeClient(
+        results={
+            "user_settings": [[
+                {"user_id": "weekly", "unlikely_after_days": 7},
+                {"user_id": "monthly", "unlikely_after_days": 30},
+                {"user_id": "never", "unlikely_after_days": None},
+                {"user_id": "default", "unlikely_after_days": 14},
+            ]],
+        }
     )
+    await _run(client)
+
+    default, seven, thirty = client.updates()
+
+    assert abs(_cutoff_days(default) - 14) < 0.001
+    assert ("not_", ()) in default.calls
+    [(field, excluded)] = default.args("in_")
+    assert field == "user_id"
+    assert sorted(excluded) == ["monthly", "never", "weekly"]
+
+    assert abs(_cutoff_days(seven) - 7) < 0.001
+    assert seven.args("in_") == [("user_id", ["weekly"])]
+    assert abs(_cutoff_days(thirty) - 30) < 0.001
+    assert thirty.args("in_") == [("user_id", ["monthly"])]
+
+    # Users who chose never appear in no update except as an exclusion
+    for query in (seven, thirty):
+        assert "never" not in query.args("in_")[0][1]
+
+
+@pytest.mark.asyncio
+async def test_transition_unlikely_records_history_for_every_moved_application():
+    client = FakeClient(
+        results={
+            "user_settings": [[{"user_id": "weekly", "unlikely_after_days": 7}]],
+            "applications": [
+                [{"id": "app-1", "user_id": "someone"}],
+                [{"id": "app-2", "user_id": "weekly"}],
+            ],
+        }
+    )
+    await _run(client)
+
+    [insert] = client.history_inserts()
+    [(entries,)] = insert.args("insert")
+    assert entries == [
+        {"application_id": "app-1", "user_id": "someone", "old_status": "Applied", "new_status": "Unlikely", "is_automatic": True},
+        {"application_id": "app-2", "user_id": "weekly", "old_status": "Applied", "new_status": "Unlikely", "is_automatic": True},
+    ]
 
 
 @pytest.mark.asyncio
 async def test_transition_unlikely_handles_empty_result():
-    """transition_unlikely() handles an empty result set without error."""
-    client_mock, _ = _make_supabase_chain_mock(data=[])
+    """Nothing to move: no history insert, no error."""
+    client = FakeClient()
+    await _run(client)
+    assert client.history_inserts() == []
 
-    with patch("app.services.scheduler.create_client", return_value=client_mock):
-        # Should not raise
-        await transition_unlikely()
+
+@pytest.mark.asyncio
+async def test_transition_unlikely_skips_the_run_when_settings_fail():
+    """Without the settings it can't tell who opted out, so nothing is moved."""
+    client = FakeClient(errors={"user_settings": RuntimeError("DB connection failed")})
+    await _run(client)
+    assert client.updates() == []
 
 
 @pytest.mark.asyncio
 async def test_transition_unlikely_catches_exceptions():
-    """If supabase raises an exception, transition_unlikely() catches it and returns."""
-    client_mock, _ = _make_supabase_chain_mock(raise_exc=RuntimeError("DB connection failed"))
-
-    with patch("app.services.scheduler.create_client", return_value=client_mock):
-        # Should not propagate the exception
-        await transition_unlikely()
+    """If an update raises, transition_unlikely() catches it and returns."""
+    client = FakeClient(errors={"applications": RuntimeError("DB connection failed")})
+    # Should not propagate the exception
+    await _run(client)

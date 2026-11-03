@@ -53,6 +53,8 @@ def mock_settings():
         patch("app.config.get_settings", return_value=fake_settings),
         patch("app.routers.applications.get_settings", return_value=fake_settings),
         patch("app.routers.files.get_settings", return_value=fake_settings),
+        patch("app.routers.settings.get_settings", return_value=fake_settings),
+        patch("app.routers.account.get_settings", return_value=fake_settings),
         patch("app.services.storage.get_settings", return_value=fake_settings),
         patch("app.services.scheduler.get_settings", return_value=fake_settings),
     ):

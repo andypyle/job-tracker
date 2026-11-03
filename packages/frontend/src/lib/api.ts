@@ -5,6 +5,8 @@ import type {
   ApplicationStatus,
   ApplicationUpdate,
   TimelineStats,
+  UserSettings,
+  UserSettingsUpdate,
 } from '@jobtracker/shared'
 import { supabase } from './supabase'
 
@@ -190,6 +192,34 @@ export async function fetchOpenGraph(url: string): Promise<OpenGraphResult> {
 export async function getTimelineStats(): Promise<TimelineStats> {
   const res = await api.get<ApiEnvelope<TimelineStats>>('/stats/timeline')
   return unwrap(res.data)
+}
+
+// ---------------------------------------------------------------------------
+// Settings and account
+// ---------------------------------------------------------------------------
+
+/**
+ * The user's settings. The backend fills in defaults for a user who has never saved any.
+ * `unlikely_after_days` is null when the user turned the move to Unlikely off, which `unwrap`
+ * is fine with: only the whole `data` being null counts as empty.
+ */
+export async function getSettings(): Promise<UserSettings> {
+  const res = await api.get<ApiEnvelope<UserSettings>>('/settings')
+  return unwrap(res.data)
+}
+
+/** Save the settings; returns them as stored. */
+export async function updateSettings(data: UserSettingsUpdate): Promise<UserSettings> {
+  const res = await api.patch<ApiEnvelope<UserSettings>>('/settings', data)
+  return unwrap(res.data)
+}
+
+/**
+ * Permanently delete the signed-in user, their applications, status history, settings and
+ * uploaded files. The session is useless afterwards; sign out locally once this resolves.
+ */
+export async function deleteAccount(): Promise<void> {
+  await api.delete('/account')
 }
 
 export default api

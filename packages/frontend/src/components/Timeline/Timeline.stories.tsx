@@ -25,7 +25,7 @@ const history = (
 const systemEvents = (
   <>
     <TimelineItem actor="system" time="Oct 16, 2026 · 2:00 AM" dateTime="2026-10-16T02:00">
-      Marked Unlikely after 2 weeks with no status change
+      Marked Unlikely after no status change in Applied
     </TimelineItem>
     <TimelineItem badge={<Badge tone="info">Applied</Badge>} time="Oct 2, 2026 · 10:02 AM" dateTime="2026-10-02T10:02">
       Application created

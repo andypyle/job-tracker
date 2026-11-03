@@ -13,7 +13,8 @@ A web app for tracking job applications: where you applied, where each one stand
 ## Features
 
 - **Track applications through their lifecycle:** Applied → Interviewing → Offer, Rejected or Role Eliminated, with a timeline of every status change.
-- **Automatic follow-up:** applications with no movement after 14 days are moved to Unlikely by a nightly job, so the active list stays honest.
+- **Automatic follow-up:** applications with no movement are moved to Unlikely by a nightly job, so the active list stays honest. The wait is 14 days by default; pick 7 to 60 days, or turn it off, in Settings.
+- **Settings:** change your name, email and password, or delete your account and everything in it.
 - **Paste a link to fill in the details:** the backend scrapes the job post's OpenGraph and JSON-LD data for the title, company, logo and compensation.
 - **Attach your résumé and cover letter** (PDF). Downloads are short-lived signed URLs.
 - **Dashboard:** response rate, interview rate, average response time, applications per week and by status.

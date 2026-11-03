@@ -246,7 +246,7 @@ export const SparseAndAutomatic: Story = {
       await expect(value(details, term)).toHaveTextContent('Not set')
     }
     const [automatic] = within(main.getByRole('region', { name: 'Status history' })).getAllByRole('listitem')
-    await expect(automatic).toHaveTextContent('Marked Unlikely after 2 weeks with no status change')
+    await expect(automatic).toHaveTextContent('Marked Unlikely after no status change in Applied')
     await expect(within(automatic).queryByText('Unlikely', { exact: true })).not.toBeInTheDocument()
   },
 }

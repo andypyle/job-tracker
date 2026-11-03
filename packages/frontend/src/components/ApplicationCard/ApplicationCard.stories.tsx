@@ -97,7 +97,7 @@ export const ChangeStatus: Story = {
   },
 }
 
-/** Unlikely rows say how long it's been quiet: the nightly job moves Applied after 14 days */
+/** Unlikely rows say how long it's been quiet: the nightly job moves Applied after the user's cutoff (14 days by default) */
 export const Unlikely: Story = {
   args: {
     application: application({ status: 'Unlikely', compensation: undefined, is_referral: false, date_applied: `${year}-09-14` }),

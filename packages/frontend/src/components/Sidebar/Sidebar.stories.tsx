@@ -103,12 +103,30 @@ export const CountsLoading: Story = {
   },
 }
 
-/** The account block: the name, the email and Sign out */
+/**
+ * On Settings: its link sits in the account block, outside the nav, so it paints its own current
+ * state and the nav has no marker
+ */
+export const SettingsCurrent: Story = {
+  parameters: { route: '/settings' },
+  play: async ({ canvas, canvasElement }) => {
+    const settings = canvas.getByRole('link', { name: 'Settings' })
+    await expect(settings).toHaveAttribute('href', '/settings')
+    await expect(settings).toHaveAttribute('aria-current', 'page')
+    await expect(settings.closest('nav')).toBeNull()
+    await expect(getComputedStyle(settings).backgroundColor).not.toBe(transparent)
+    await expect(within(canvas.getByRole('navigation', { name: 'Main' })).queryByRole('link', { current: 'page' })).toBeNull()
+    await expect(marker(canvasElement)).toBeNull()
+  },
+}
+
+/** The account block: the name, the email, Settings and Sign out */
 export const SignOut: Story = {
   play: async ({ args, canvas }) => {
     await expect(canvas.getByText('Alex Rivera')).toBeVisible()
     await expect(canvas.getByText('alex@example.com')).toBeVisible()
     await expect(canvas.getByText('AR')).toBeInTheDocument()
+    await expect(canvas.getByRole('link', { name: 'Settings' })).not.toHaveAttribute('aria-current')
     await userEvent.click(canvas.getByRole('button', { name: 'Sign out' }))
     await expect(args.onSignOut).toHaveBeenCalledOnce()
   },

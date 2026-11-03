@@ -43,8 +43,12 @@ Statuses and how they change:
 
 ```
 Applied (default) → Interviewing → Offer | Rejected | Role Eliminated   (manual)
-Applied → Unlikely                                                      (automatic after 14 days in Applied, nightly job)
+Applied → Unlikely                                                      (automatic, nightly job)
 ```
+
+The nightly move happens after a per-user cutoff: `user_settings.unlikely_after_days` (7, 14, 21, 30 or 60, or null for never; 14 when the user has no row). Users pick it on the Settings page. Copy that mentions the cutoff should read the setting, not say "2 weeks".
+
+Settings also changes the name, email and password through Supabase auth (`useAuth`), and deletes the account through `DELETE /account`, which removes the auth user (applications, history and settings cascade) and then their files.
 
 Users can attach PDF résumé and cover-letter uploads (max 10MB, PDF only). Download links are signed URLs that expire after 1 hour, so don't cache them long-term in the UI.
 

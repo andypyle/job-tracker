@@ -13,32 +13,14 @@ import { PasswordInput } from '../components/PasswordInput/PasswordInput'
 import { focusRing } from '../lib/classes'
 import { cn } from '../lib/cn'
 import { useAuth } from '../hooks/useAuth'
-
-export const MIN_PASSWORD_LENGTH = 8
-
-// zod 3 skips an object's refinements while any of its fields fails, so both password rules
-// live in one superRefine over plain strings: the mismatch shows even while the name is empty
-const passwords = z
-  .object({ password: z.string(), confirmPassword: z.string() })
-  .superRefine(({ password, confirmPassword }, ctx) => {
-    if (password.length === 0) {
-      ctx.addIssue({ code: 'custom', path: ['password'], message: 'Enter a password' })
-    } else if (password.length < MIN_PASSWORD_LENGTH) {
-      ctx.addIssue({ code: 'custom', path: ['password'], message: `Use at least ${MIN_PASSWORD_LENGTH} characters.` })
-    }
-    if (confirmPassword.length === 0) {
-      ctx.addIssue({ code: 'custom', path: ['confirmPassword'], message: 'Enter your password again' })
-    } else if (confirmPassword !== password) {
-      ctx.addIssue({ code: 'custom', path: ['confirmPassword'], message: 'Passwords don’t match.' })
-    }
-  })
+import { MIN_PASSWORD_LENGTH, passwordPair } from '../lib/passwords'
 
 const schema = z
   .object({
     name: z.string().trim().min(1, 'Enter your name'),
     email: z.string().trim().min(1, 'Enter your email').email('Enter an email like name@example.com'),
   })
-  .and(passwords)
+  .and(passwordPair)
 
 type SignUpValues = z.infer<typeof schema>
 

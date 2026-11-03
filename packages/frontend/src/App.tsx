@@ -9,6 +9,7 @@ import { ActiveJobsPage } from './pages/ActiveJobsPage'
 import { UnlikelyJobsPage } from './pages/UnlikelyJobsPage'
 import { RejectedJobsPage } from './pages/RejectedJobsPage'
 import { ApplicationDetailPage } from './pages/ApplicationDetailPage'
+import { SettingsPage } from './pages/SettingsPage'
 
 // ---------------------------------------------------------------------------
 // Full-screen loading state shown while the auth session is being resolved
@@ -68,6 +69,8 @@ export default function App() {
 
           {/* Application detail */}
           <Route path="/jobs/detail/:id" element={<ApplicationDetailPage />} />
+
+          <Route path="/settings" element={<SettingsPage />} />
         </Route>
 
         {/* Catch-all — redirect unknown paths to dashboard */}
