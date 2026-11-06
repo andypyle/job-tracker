@@ -97,5 +97,5 @@ supabase/             Migrations, config and the demo seed
 
 ## What's next
 
-- Error monitoring and observability with Sentry, before opening the app up publicly.
+- Error monitoring and observability with Sentry.
 - Possibly bringing in the AI interview prep from my earlier project.
