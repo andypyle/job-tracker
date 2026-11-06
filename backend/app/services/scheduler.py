@@ -101,8 +101,33 @@ async def transition_unlikely() -> None:
         logger.exception("auto_unlikely: unexpected error during transition job")
 
 
+async def reset_demo_accounts() -> None:
+    """
+    Put the demo account(s) back to the sample data (the reset_demo_data() database function).
+    Runs before the Unlikely move, so the demo shows one of those each morning.
+    """
+    try:
+        settings = get_settings()
+        client = create_client(settings.SUPABASE_URL, settings.SUPABASE_SERVICE_ROLE_KEY)
+        count = client.rpc("reset_demo_data").execute().data
+        logger.info("reset_demo: reset %s demo account(s)", count)
+    except Exception:
+        logger.exception("reset_demo: failed to reset the demo data")
+
+
 def start_scheduler() -> None:
-    """Register the transition_unlikely job and start the scheduler."""
+    """Register the nightly jobs and start the scheduler."""
+    scheduler.add_job(
+        reset_demo_accounts,
+        trigger="cron",
+        hour=1,
+        minute=30,
+        timezone="UTC",
+        coalesce=True,
+        max_instances=1,
+        id="reset_demo",
+        replace_existing=True,
+    )
     scheduler.add_job(
         transition_unlikely,
         trigger="cron",
@@ -115,7 +140,7 @@ def start_scheduler() -> None:
         replace_existing=True,
     )
     scheduler.start()
-    logger.info("Scheduler started — auto_unlikely job registered (daily at 02:00 UTC)")
+    logger.info("Scheduler started — reset_demo (01:30 UTC) and auto_unlikely (02:00 UTC) registered")
 
 
 def stop_scheduler() -> None:

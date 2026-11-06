@@ -8,8 +8,9 @@ Key design decisions:
   because the middleware just needs FRONTEND_URL as a string, and any value
   satisfies it. The patches that matter (for Supabase client creation inside
   route handlers) all happen at call time, not import time.
-- mock_current_user overrides the get_current_user FastAPI dependency so no
-  real Supabase JWT calls happen in any test.
+- mock_current_user and mock_auth_user override the get_current_user and
+  get_auth_user FastAPI dependencies so no real Supabase JWT calls happen in
+  any test. Set mock_auth_user["app_metadata"]["demo"] = True for the demo.
 - The TestClient wraps the FastAPI app with those overrides applied.
 - Supabase client calls are mocked per-test with unittest.mock.patch.
 """
@@ -27,7 +28,7 @@ os.environ.setdefault("SUPABASE_SERVICE_ROLE_KEY", "fake-service-role-key")
 os.environ.setdefault("FRONTEND_URL", "http://localhost:5173")
 
 from app.config import get_settings  # noqa: E402 — must come after env setup
-from app.dependencies import get_current_user  # noqa: E402
+from app.dependencies import get_auth_user, get_current_user  # noqa: E402
 from app.main import app  # noqa: E402
 
 TEST_USER_ID = "test-user-uuid-1234"
@@ -70,7 +71,13 @@ def mock_current_user():
 
 
 @pytest.fixture
-def client(mock_current_user):
+def mock_auth_user(mock_current_user):
+    """The verified Supabase user, as get_auth_user returns it. Mutable, so a test can make it the demo."""
+    return {"id": mock_current_user, "app_metadata": {"provider": "email"}}
+
+
+@pytest.fixture
+def client(mock_current_user, mock_auth_user):
     """
     TestClient with get_current_user dependency overridden.
     The override returns the fixed test user ID without any HTTP call.
@@ -78,6 +85,7 @@ def client(mock_current_user):
     startup which is already closed in the pytest-asyncio environment.
     """
     app.dependency_overrides[get_current_user] = lambda: mock_current_user
+    app.dependency_overrides[get_auth_user] = lambda: mock_auth_user
     with (
         patch("app.main.start_scheduler"),
         patch("app.main.stop_scheduler"),

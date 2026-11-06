@@ -9,7 +9,14 @@ import type { ApplicationDialogProps } from './ApplicationDialog.types'
  * The Add and Edit application dialog: a large Dialog (a sheet below md) around ApplicationForm,
  * with Cancel and the submit button in the footer. Saving is the caller's job (`onSubmit`).
  */
-export function ApplicationDialog({ open, onClose, application, onSubmit, fetchDetails }: ApplicationDialogProps) {
+export function ApplicationDialog({
+  open,
+  onClose,
+  application,
+  onSubmit,
+  fetchDetails,
+  allowUploads,
+}: ApplicationDialogProps) {
   const formId = useId()
   const [saving, setSaving] = useState(false)
   const editing = application !== undefined
@@ -58,6 +65,7 @@ export function ApplicationDialog({ open, onClose, application, onSubmit, fetchD
         application={application}
         onSubmit={submit}
         fetchDetails={fetchDetails}
+        allowUploads={allowUploads}
       />
     </Dialog>
   )

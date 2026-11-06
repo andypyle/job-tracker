@@ -5,6 +5,7 @@ import { ApplicationDialog } from '../components/ApplicationDialog/ApplicationDi
 import { useApplicationCounts } from '../hooks/useApplicationCounts'
 import { useAuth } from '../hooks/useAuth'
 import { useSaveApplication } from '../hooks/useSaveApplication'
+import { isDemoUser } from '../lib/demo'
 import { getDisplayName } from '../lib/userName'
 
 interface AppLayoutContext {
@@ -49,6 +50,7 @@ export function AppLayout() {
           await saveApplication(values)
           setAdding(false)
         }}
+        allowUploads={!isDemoUser(user)}
       />
     </AppShell>
   )

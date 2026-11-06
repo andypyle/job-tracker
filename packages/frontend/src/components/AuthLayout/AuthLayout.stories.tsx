@@ -24,7 +24,7 @@ export const Default: Story = {
   play: async ({ canvas }) => {
     await expect(canvas.getByRole('banner')).toHaveTextContent('Know where every application stands.')
     await expect(canvas.getByRole('main')).toContainElement(canvas.getByRole('heading', { level: 1, name: 'Sign in' }))
-    await expect(canvas.getByText(`© ${new Date().getFullYear()} Job Tracker`)).toBeInTheDocument()
+    await expect(canvas.getByRole('link', { name: 'andypyle.dev' })).toHaveAttribute('href', 'https://andypyle.dev')
   },
 }
 

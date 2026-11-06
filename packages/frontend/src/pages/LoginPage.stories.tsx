@@ -29,6 +29,8 @@ export const Default: Story = {
     await expect(canvas.getByLabelText('Password')).toHaveAttribute('autocomplete', 'current-password')
     await expect(canvas.getByRole('link', { name: 'Create one' })).toHaveAttribute('href', '/register')
     await expect(canvas.queryByRole('alert')).not.toBeInTheDocument()
+    // Only when the demo is configured
+    await expect(canvas.queryByRole('button', { name: 'Try the demo' })).not.toBeInTheDocument()
   },
 }
 
@@ -97,7 +99,41 @@ export const Pending: Story = {
   },
 }
 
+/** With the demo configured: "Try the demo" signs in without the form, and reads "Opening the demo…" meanwhile */
+export const TryTheDemo: Story = {
+  args: { onTryDemo: fn(() => new Promise<void>(() => {})) },
+  play: async ({ canvas, args }) => {
+    await userEvent.click(canvas.getByRole('button', { name: 'Try the demo' }))
+    await expect(args.onTryDemo).toHaveBeenCalledOnce()
+    await expect(args.onSignIn).not.toHaveBeenCalled()
+    await expect(await canvas.findByRole('button', { name: 'Opening the demo…' })).toBeDisabled()
+    await expect(canvas.getByRole('button', { name: 'Sign in' })).toBeDisabled()
+  },
+}
+
+/** The demo couldn't sign in: the same focused Alert as a failed sign-in */
+export const DemoUnavailable: Story = {
+  args: {
+    onTryDemo: fn(async () => {
+      throw new Error('The demo isn’t available right now. Try again later.')
+    }),
+  },
+  play: async ({ canvas }) => {
+    await userEvent.click(canvas.getByRole('button', { name: 'Try the demo' }))
+    const alert = await canvas.findByRole('alert')
+    await expect(alert).toHaveTextContent('The demo isn’t available right now.')
+    await waitFor(() => expect(alert).toHaveFocus())
+    await expect(canvas.getByRole('button', { name: 'Try the demo' })).toBeEnabled()
+    await waitFor(() => expect(getComputedStyle(alert).opacity).toBe('1'))
+  },
+}
+
 export const Dark: Story = {
+  globals: { theme: 'dark' },
+}
+
+export const TryTheDemoDark: Story = {
+  args: { onTryDemo: fn(async () => {}) },
   globals: { theme: 'dark' },
 }
 

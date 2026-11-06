@@ -12,6 +12,7 @@ import { Input } from '../components/Input/Input'
 import { PasswordInput } from '../components/PasswordInput/PasswordInput'
 import { focusRing } from '../lib/classes'
 import { cn } from '../lib/cn'
+import { getDemoCredentials } from '../lib/demo'
 import { useAuth } from '../hooks/useAuth'
 
 const schema = z.object({
@@ -24,13 +25,15 @@ type LoginValues = z.infer<typeof schema>
 export interface LoginScreenProps {
   /** Signs in, or throws an Error whose message the screen shows above the fields */
   onSignIn: (email: string, password: string) => Promise<void>
+  /** Signs in to the demo account, or throws like `onSignIn`. Leave out to hide "Try the demo". */
+  onTryDemo?: () => Promise<void>
 }
 
 /**
  * The Login screen without the auth wiring. A failed sign-in shows one danger Alert (which
  * takes focus), keeps the email and clears the password; the fields themselves show no error.
  */
-export function LoginScreen({ onSignIn }: LoginScreenProps) {
+export function LoginScreen({ onSignIn, onTryDemo }: LoginScreenProps) {
   const {
     register,
     handleSubmit,
@@ -47,16 +50,32 @@ export function LoginScreen({ onSignIn }: LoginScreenProps) {
     if (submitError) alertRef.current?.focus()
   }, [submitError])
 
+  // A new object each time, so the same message focuses the alert again
+  const fail = (error: unknown) =>
+    setSubmitError({ message: error instanceof Error ? error.message : 'Something went wrong. Try again.' })
+
   const submit = handleSubmit(async ({ email, password }) => {
     setSubmitError(null)
     try {
       await onSignIn(email, password)
     } catch (error) {
       setValue('password', '')
-      // A new object each time, so the same message focuses the alert again
-      setSubmitError({ message: error instanceof Error ? error.message : 'Something went wrong. Try again.' })
+      fail(error)
     }
   })
+
+  const [openingDemo, setOpeningDemo] = useState(false)
+  const tryDemo = async () => {
+    if (!onTryDemo) return
+    setSubmitError(null)
+    setOpeningDemo(true)
+    try {
+      await onTryDemo()
+    } catch (error) {
+      fail(error)
+      setOpeningDemo(false)
+    }
+  }
 
   return (
     <AuthLayout>
@@ -79,9 +98,16 @@ export function LoginScreen({ onSignIn }: LoginScreenProps) {
           <PasswordInput {...register('password')} autoComplete="current-password" placeholder="Password" />
         </FormField>
 
-        <Button type="submit" variant="primary" disabled={isSubmitting} className="w-full">
-          {isSubmitting ? 'Signing in…' : 'Sign in'}
-        </Button>
+        <div className="flex flex-col gap-3">
+          <Button type="submit" variant="primary" disabled={isSubmitting || openingDemo} className="w-full">
+            {isSubmitting ? 'Signing in…' : 'Sign in'}
+          </Button>
+          {onTryDemo && (
+            <Button variant="secondary" onClick={tryDemo} disabled={isSubmitting || openingDemo} className="w-full">
+              {openingDemo ? 'Opening the demo…' : 'Try the demo'}
+            </Button>
+          )}
+        </div>
 
         <p className="flex flex-wrap justify-center gap-x-1 text-body-small text-text-muted">
           Don’t have an account?
@@ -104,6 +130,7 @@ function signInMessage(error: AuthError) {
 export function LoginPage() {
   const { signIn } = useAuth()
   const navigate = useNavigate()
+  const demo = getDemoCredentials()
 
   return (
     <LoginScreen
@@ -112,6 +139,14 @@ export function LoginPage() {
         if (error) throw new Error(signInMessage(error))
         navigate('/')
       }}
+      onTryDemo={
+        demo &&
+        (async () => {
+          const { error } = await signIn(demo.email, demo.password)
+          if (error) throw new Error('The demo isn’t available right now. Try again later.')
+          navigate('/')
+        })
+      }
     />
   )
 }

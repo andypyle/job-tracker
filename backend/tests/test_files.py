@@ -101,6 +101,25 @@ def test_upload_rejects_oversized_file(client):
     assert "10" in resp.json()["detail"] or "size" in resp.json()["detail"].lower()
 
 
+@pytest.mark.parametrize("file_type", ["resume", "cover_letter"])
+def test_upload_refuses_the_demo_account(client, mock_auth_user, file_type):
+    mock_auth_user["app_metadata"]["demo"] = True
+    client_mock = _make_ownership_mock()
+
+    with (
+        patch("app.routers.files.create_client", return_value=client_mock),
+        patch("app.routers.files.upload_file", new_callable=AsyncMock) as upload,
+    ):
+        resp = client.post(
+            f"/applications/{TEST_APP_ID}/{file_type}",
+            headers=AUTH_HEADER,
+            files={"file": ("file.pdf", io.BytesIO(b"%PDF-1.4"), "application/pdf")},
+        )
+
+    assert resp.status_code == 403
+    upload.assert_not_called()
+
+
 def test_upload_succeeds_for_valid_pdf(client):
     """POST /{id}/resume with a valid PDF stores at {user_id}/{app_id}/resume.pdf."""
     pdf_content = b"%PDF-1.4" + b"x" * VALID_PDF_SIZE
