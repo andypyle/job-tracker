@@ -1,3 +1,4 @@
+import { colorTransition, focusRing } from '../../lib/classes'
 import { cn } from '../../lib/cn'
 import { Icon } from '../Icon/Icon'
 import type { AuthLayoutProps } from './AuthLayout.types'
@@ -33,7 +34,13 @@ export function AuthLayout({ children, className, ...props }: AuthLayoutProps) {
         </div>
 
         <p className="hidden text-caption-regular text-text-on-band-muted lg:block">
-          © {new Date().getFullYear()} Job Tracker
+          © {new Date().getFullYear()}{' '}
+          <a
+            href="https://andypyle.dev"
+            className={cn('rounded-xs underline hover:text-text-on-band', colorTransition, focusRing)}
+          >
+            andypyle.dev
+          </a>
         </p>
       </header>
 
