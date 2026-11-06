@@ -14,12 +14,14 @@ import { Dialog } from '../components/Dialog/Dialog'
 import { PageHeader } from '../components/PageHeader/PageHeader'
 import { StatusSelect } from '../components/StatusSelect/StatusSelect'
 import { Timeline, TimelineItem } from '../components/Timeline/Timeline'
+import { useAuth } from '../hooks/useAuth'
 import { useSaveApplication } from '../hooks/useSaveApplication'
 import { deleteApplication, getApplication } from '../lib/api'
 import { describeChange, displayUrl, fileName, formatTimestamp, historyNewestFirst } from '../lib/applicationDetail'
 import { formatDisplayDate, formatFullDate, formatShortDate, toISODate, todayISO, type ISODate } from '../lib/calendarDate'
 import { focusRing } from '../lib/classes'
 import { cn } from '../lib/cn'
+import { isDemoUser } from '../lib/demo'
 import { getInitials } from '../lib/initials'
 import { statusGroup } from '../lib/statusGroup'
 import { toast } from '../lib/toast'
@@ -326,6 +328,7 @@ export function ApplicationDetailPage() {
   const queryClient = useQueryClient()
   const saveApplication = useSaveApplication()
   const changeStatus = useStatusChange()
+  const { user } = useAuth()
   const [editing, setEditing] = useState(false)
 
   const query = useQuery({
@@ -366,6 +369,7 @@ export function ApplicationDetailPage() {
             await saveApplication(values, application)
             setEditing(false)
           }}
+          allowUploads={!isDemoUser(user)}
         />
       )}
     </>

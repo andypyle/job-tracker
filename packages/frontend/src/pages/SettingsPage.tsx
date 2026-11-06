@@ -18,6 +18,7 @@ import { Select } from '../components/Select/Select'
 import { useApplicationCounts } from '../hooks/useApplicationCounts'
 import { useAuth } from '../hooks/useAuth'
 import { deleteAccount, getSettings, updateSettings } from '../lib/api'
+import { isDemoUser } from '../lib/demo'
 import { getInitials } from '../lib/initials'
 import { MIN_PASSWORD_LENGTH, passwordPair } from '../lib/passwords'
 import {
@@ -42,6 +43,8 @@ export interface SettingsScreenProps {
   settingsError?: boolean
   /** For the Delete account copy; undefined while the counts load */
   applicationCount?: number
+  /** The public demo account: a note replaces Profile, Email, Password and Delete account */
+  demo?: boolean
   /** Saves the name; throw to show the message in the section */
   onSaveName: (name: string) => Promise<void>
   /** `sent` once the confirmation links are on their way; `email-taken` marks the field. Throw for anything else. */
@@ -65,6 +68,7 @@ export function SettingsScreen({
   settings,
   settingsError,
   applicationCount,
+  demo,
   onSaveName,
   onChangeEmail,
   onChangePassword,
@@ -80,11 +84,20 @@ export function SettingsScreen({
       />
       {/* One 720px column from md, as in the frames; full width with 16px sides below */}
       <div className="flex flex-col gap-4 p-4 pb-24 md:max-w-[calc(45rem+--spacing(20))] md:gap-6 md:px-10 md:pt-8 md:pb-12">
-        <ProfileSection name={name} onSave={onSaveName} />
-        <EmailSection email={email} pendingEmail={pendingEmail} onChange={onChangeEmail} />
-        <PasswordSection onChange={onChangePassword} />
-        <TrackingSection settings={settings} error={settingsError} onSave={onSaveTracking} />
-        <DeleteAccountSection email={email} applicationCount={applicationCount} onDelete={onDeleteAccount} />
+        {demo ? (
+          <>
+            <DemoAccountSection />
+            <TrackingSection settings={settings} error={settingsError} onSave={onSaveTracking} />
+          </>
+        ) : (
+          <>
+            <ProfileSection name={name} onSave={onSaveName} />
+            <EmailSection email={email} pendingEmail={pendingEmail} onChange={onChangeEmail} />
+            <PasswordSection onChange={onChangePassword} />
+            <TrackingSection settings={settings} error={settingsError} onSave={onSaveTracking} />
+            <DeleteAccountSection email={email} applicationCount={applicationCount} onDelete={onDeleteAccount} />
+          </>
+        )}
       </div>
     </>
   )
@@ -137,6 +150,21 @@ function Section({ title, onSubmit, submitError, action, pendingAction, pending,
           </Button>
         </div>
       </form>
+    </Card>
+  )
+}
+
+/** In place of the account sections, which the demo account can't use */
+function DemoAccountSection() {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Demo account</CardTitle>
+      </CardHeader>
+      <p className="text-body-small text-text-muted">
+        You’re in the shared demo, so the name, email, password and account can’t be changed, and file uploads are
+        off. Add, edit and delete applications as you like: everything resets to the sample data each night.
+      </p>
     </Card>
   )
 }
@@ -525,6 +553,7 @@ export function SettingsPage() {
       settings={settings.data}
       settingsError={settings.isError}
       applicationCount={countsLoading ? undefined : counts.active + counts.unlikely + counts.rejected}
+      demo={isDemoUser(user)}
       onSaveName={async (name) => {
         const { error } = await updateName(name)
         if (error) throw new Error(error.message)

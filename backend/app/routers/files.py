@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, Header, HTTPException, Response, UploadF
 from supabase import Client, create_client
 
 from app.config import get_settings
-from app.dependencies import get_current_user
+from app.dependencies import get_current_user, reject_demo_user
 from app.services.storage import delete_file, upload_file
 
 logger = logging.getLogger(__name__)
@@ -136,7 +136,7 @@ async def _delete_file_for_application(
 # ---------------------------------------------------------------------------
 
 
-@router.post("/{application_id}/resume", status_code=200)
+@router.post("/{application_id}/resume", status_code=200, dependencies=[Depends(reject_demo_user)])
 async def upload_resume(
     application_id: str,
     file: UploadFile,
@@ -171,7 +171,7 @@ async def delete_resume(
 # ---------------------------------------------------------------------------
 
 
-@router.post("/{application_id}/cover_letter", status_code=200)
+@router.post("/{application_id}/cover_letter", status_code=200, dependencies=[Depends(reject_demo_user)])
 async def upload_cover_letter(
     application_id: str,
     file: UploadFile,

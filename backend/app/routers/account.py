@@ -3,7 +3,7 @@ import logging
 from fastapi import APIRouter, Depends, HTTPException, Response
 
 from app.config import get_settings
-from app.dependencies import get_current_user
+from app.dependencies import get_current_user, reject_demo_user
 from app.services.storage import delete_file
 from supabase import Client, create_client
 
@@ -21,7 +21,7 @@ def _get_admin_client() -> Client:
     return create_client(settings.SUPABASE_URL, settings.SUPABASE_SERVICE_ROLE_KEY)
 
 
-@router.delete("", status_code=204)
+@router.delete("", status_code=204, dependencies=[Depends(reject_demo_user)])
 async def delete_account(user_id: str = Depends(get_current_user)):
     """
     Deletes the signed-in user. Their applications, status history and settings go with them

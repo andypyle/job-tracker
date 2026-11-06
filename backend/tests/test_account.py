@@ -97,6 +97,17 @@ def test_delete_account_stops_when_the_file_lookup_fails(client):
     admin.auth.admin.delete_user.assert_not_called()
 
 
+def test_delete_account_refuses_the_demo_account(client, mock_auth_user):
+    mock_auth_user["app_metadata"]["demo"] = True
+    admin, _ = _make_admin_mock([])
+
+    with patch("app.routers.account.create_client", return_value=admin):
+        resp = client.delete("/account", headers=AUTH_HEADER)
+
+    assert resp.status_code == 403
+    admin.auth.admin.delete_user.assert_not_called()
+
+
 def test_delete_account_needs_a_signed_in_user():
     """Without the dependency override, a request with no Authorization header deletes nothing."""
     from fastapi.testclient import TestClient

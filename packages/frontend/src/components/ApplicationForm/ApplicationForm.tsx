@@ -124,6 +124,7 @@ export function ApplicationForm({
   application,
   onSubmit,
   fetchDetails = fetchOpenGraph,
+  allowUploads = true,
   className,
   ...props
 }: ApplicationFormProps) {
@@ -304,24 +305,32 @@ export function ApplicationForm({
           className="justify-self-start @min-[31rem]:col-span-2"
         />
 
-        <Controller
-          control={control}
-          name="resume"
-          render={({ field }) => (
-            <FormField label="Resume" optional>
-              <FileDropzone value={field.value} onSelect={field.onChange} onRemove={() => field.onChange(null)} />
-            </FormField>
-          )}
-        />
-        <Controller
-          control={control}
-          name="cover_letter"
-          render={({ field }) => (
-            <FormField label="Cover letter" optional>
-              <FileDropzone value={field.value} onSelect={field.onChange} onRemove={() => field.onChange(null)} />
-            </FormField>
-          )}
-        />
+        {allowUploads ? (
+          <>
+            <Controller
+              control={control}
+              name="resume"
+              render={({ field }) => (
+                <FormField label="Resume" optional>
+                  <FileDropzone value={field.value} onSelect={field.onChange} onRemove={() => field.onChange(null)} />
+                </FormField>
+              )}
+            />
+            <Controller
+              control={control}
+              name="cover_letter"
+              render={({ field }) => (
+                <FormField label="Cover letter" optional>
+                  <FileDropzone value={field.value} onSelect={field.onChange} onRemove={() => field.onChange(null)} />
+                </FormField>
+              )}
+            />
+          </>
+        ) : (
+          <p className="text-body-small text-text-muted @min-[31rem]:col-span-2">
+            Resume and cover letter uploads are off in the demo.
+          </p>
+        )}
 
         <FormField label="Notes" optional className="@min-[31rem]:col-span-2">
           <Textarea {...register('notes')} placeholder="Anything you want to remember about this role" />

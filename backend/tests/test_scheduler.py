@@ -1,14 +1,14 @@
 """
-Tests for the scheduler's transition_unlikely() function.
+Tests for the scheduler's nightly jobs: transition_unlikely() and reset_demo_accounts().
 
 No real Supabase connection is made: FakeClient records each query's calls and returns canned rows.
 """
 from datetime import datetime, timedelta, timezone
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
-from app.services.scheduler import group_users_by_cutoff, transition_unlikely
+from app.services.scheduler import group_users_by_cutoff, reset_demo_accounts, transition_unlikely
 
 
 class FakeQuery:
@@ -199,3 +199,29 @@ async def test_transition_unlikely_catches_exceptions():
     client = FakeClient(errors={"applications": RuntimeError("DB connection failed")})
     # Should not propagate the exception
     await _run(client)
+
+
+# ---------------------------------------------------------------------------
+# reset_demo_accounts
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_reset_demo_accounts_calls_the_database_function_as_the_service_role():
+    client = MagicMock()
+    client.rpc.return_value.execute.return_value = MagicMock(data=1)
+
+    with patch("app.services.scheduler.create_client", return_value=client) as create:
+        await reset_demo_accounts()
+
+    assert create.call_args.args[1] == "fake-service-role-key"
+    client.rpc.assert_called_once_with("reset_demo_data")
+
+
+@pytest.mark.asyncio
+async def test_reset_demo_accounts_catches_exceptions():
+    client = MagicMock()
+    client.rpc.return_value.execute.side_effect = RuntimeError("DB connection failed")
+
+    with patch("app.services.scheduler.create_client", return_value=client):
+        await reset_demo_accounts()

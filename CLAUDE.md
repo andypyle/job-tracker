@@ -50,6 +50,8 @@ The nightly move happens after a per-user cutoff: `user_settings.unlikely_after_
 
 Settings also changes the name, email and password through Supabase auth (`useAuth`), and deletes the account through `DELETE /account`, which removes the auth user (applications, history and settings cascade) and then their files.
 
+The public demo is any user with `app_metadata.demo: true` (`isDemoUser` in `src/lib/demo.ts`, `is_demo_user` in `backend/app/dependencies.py`). Login shows "Try the demo" when `VITE_DEMO_EMAIL` and `VITE_DEMO_PASSWORD` are set. For the demo, Settings shows a note instead of the account sections, uploads are off (`ApplicationForm`'s `allowUploads`), and the backend refuses `DELETE /account` and uploads (`reject_demo_user`). A trigger on `auth.users` undoes changes to its email, password and metadata, and the backend resets its data at 01:30 UTC with `reset_demo_data()`, which `seed.sql` also calls. All of this is in `supabase/migrations/20261106120000_demo_account.sql`. Changing the sample data means editing that function in a new migration.
+
 Users can attach PDF résumé and cover-letter uploads (max 10MB, PDF only). Download links are signed URLs that expire after 1 hour, so don't cache them long-term in the UI.
 
 Company logos come from OpenGraph scraping and may be missing or broken. The UI must always fall back to an initials avatar.

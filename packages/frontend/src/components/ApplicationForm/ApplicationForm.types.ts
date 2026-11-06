@@ -28,4 +28,6 @@ export interface ApplicationFormProps
   onSubmit: (values: ApplicationFormValues) => Promise<unknown> | void
   /** Looks up a pasted job link. Defaults to `fetchOpenGraph`; stories pass a stand-in. */
   fetchDetails?: (url: string) => Promise<OpenGraphResult>
+  /** False for the demo account: a note replaces the Resume and Cover letter fields. Defaults to true. */
+  allowUploads?: boolean
 }

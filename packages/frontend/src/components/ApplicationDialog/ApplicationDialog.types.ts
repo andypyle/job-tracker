@@ -16,4 +16,6 @@ export interface ApplicationDialogProps {
   onSubmit: (values: ApplicationFormValues) => Promise<unknown>
   /** Passed to ApplicationForm; stories pass a stand-in */
   fetchDetails?: ApplicationFormProps['fetchDetails']
+  /** Passed to ApplicationForm: false for the demo account */
+  allowUploads?: ApplicationFormProps['allowUploads']
 }

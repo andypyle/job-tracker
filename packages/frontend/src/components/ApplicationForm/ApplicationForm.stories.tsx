@@ -219,6 +219,22 @@ export const Edit: Story = {
   },
 }
 
+/** The demo account: a note in place of the Resume and Cover letter fields, and saving leaves the files alone */
+export const UploadsOff: Story = {
+  args: { application: saved, allowUploads: false },
+  play: async ({ args, canvas }) => {
+    await expect(canvas.getByText('Resume and cover letter uploads are off in the demo.')).toBeInTheDocument()
+    await expect(canvas.queryByText('Resume')).not.toBeInTheDocument()
+    await expect(canvas.queryByText('Cover letter')).not.toBeInTheDocument()
+
+    await save(canvas)
+    await waitFor(() => expect(args.onSubmit).toHaveBeenCalledOnce())
+    const [values] = submitted(args.onSubmit)
+    await expect(values.resume).toBeUndefined()
+    await expect(values.coverLetter).toBeUndefined()
+  },
+}
+
 /** A failed save keeps the form open with the reason in an Alert, which takes focus */
 export const SaveFails: Story = {
   args: {

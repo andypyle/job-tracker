@@ -299,6 +299,26 @@ export const TrackingError: Story = {
  * The alertdialog: focus starts in the field, Delete stays disabled until the typed email
  * matches (in any case), and while deleting nothing can close it
  */
+/** The demo account: one note in place of Profile, Email, Password and Delete account; Tracking still works */
+export const DemoAccount: Story = {
+  args: { name: 'demo', email: 'demo@example.com', demo: true },
+  play: async ({ canvas }) => {
+    const main = within(canvas.getByRole('main'))
+    await expect(main.getByText('Demo account')).toBeInTheDocument()
+    await expect(main.getByText(/resets to the sample data each night/)).toBeInTheDocument()
+    for (const gone of ['Profile', 'Email', 'Password', 'Delete account']) {
+      await expect(main.queryByText(gone, { exact: true })).not.toBeInTheDocument()
+    }
+    await expect(main.queryByRole('button', { name: 'Delete account' })).not.toBeInTheDocument()
+    await expect(main.getByRole('button', { name: 'Save' })).toBeEnabled()
+  },
+}
+
+export const DemoAccountDark: Story = {
+  ...DemoAccount,
+  globals: { theme: 'dark' },
+}
+
 export const DeleteAccount: Story = {
   play: async ({ canvas, args }) => {
     const trigger = region(canvas, 'Delete account').getByRole('button', { name: 'Delete account' })

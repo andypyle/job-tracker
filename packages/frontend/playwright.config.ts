@@ -1,5 +1,6 @@
 import { defineConfig, devices } from '@playwright/test'
 import { supabaseEnv } from './e2e/env'
+import { demoUser } from './e2e/fixtures'
 
 // End-to-end tests against the real stack: a local Supabase (`supabase start` from the repo root),
 // the FastAPI backend and a production build of the frontend. Ports differ from the dev servers
@@ -42,6 +43,8 @@ export default defineConfig({
         VITE_SUPABASE_URL: supabaseEnv.url,
         VITE_SUPABASE_ANON_KEY: supabaseEnv.anonKey,
         VITE_API_BASE_URL: API_URL,
+        VITE_DEMO_EMAIL: demoUser.email,
+        VITE_DEMO_PASSWORD: demoUser.password,
       },
       timeout: 120_000,
       reuseExistingServer: !process.env.CI,
