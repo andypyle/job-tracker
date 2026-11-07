@@ -71,6 +71,9 @@ jobs:
     env:
       NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
       NEON_PROJECT_ID: ${{ vars.NEON_PROJECT_ID }}
+      # The copy inherits production's Auth settings: localhost is off there, so the smoke tests
+      # call Neon Auth as the live site
+      SMOKE_ORIGIN: https://jobtracker.andypyle.dev
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 

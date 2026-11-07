@@ -19,7 +19,7 @@ Neon branches:
 
 Migrations are plain SQL in `db/migrations`, run with dbmate: `pnpm db:new <name>` creates one (fill in `-- migrate:up` and `-- migrate:down`), `pnpm db:migrate` applies pending ones to the branch in `backend/.env`. Merging to `main` applies them to production (`.github/workflows/migrate.yml`, after a rehearsal on a copy). Never commit real data.
 
-`supabase/` is the old stack, kept only until its data is imported into Neon. Don't add to it.
+`scripts/import_from_supabase.py` copied each user's data from the old Supabase project at cutover (2026-11-07). Remove it once that project is deleted.
 
 ## Architecture rules
 

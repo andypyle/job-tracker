@@ -14,8 +14,7 @@
     "db:new": "dbmate --migrations-dir db/migrations new"
   },
   "devDependencies": {
-    "dbmate": "2.37.0",
-    "supabase": "^2.122.0"
+    "dbmate": "2.37.0"
   },
   "dependencies": {
     "@neon/config": "^1.13.0",
