@@ -1,11 +1,13 @@
 name: Database Migrations
 
+# Applies db/migrations to the production Neon branch with dbmate, after the same migrations
+# have applied cleanly to a throwaway copy of production.
 on:
   push:
     branches:
       - main
     paths:
-      - 'supabase/migrations/**'
+      - 'db/migrations/**'
   workflow_dispatch:
 
 permissions:
@@ -17,26 +19,54 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  migrate:
+  # A copy of production, deleted afterwards: catches a migration that fails against the real
+  # schema (including Neon Auth's tables) before production sees it
+  rehearse:
     runs-on: ubuntu-latest
-    # The Supabase secrets live in this environment, which only main can deploy to
-    environment: supabase-production
+    env:
+      NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
+      NEON_PROJECT_ID: ${{ vars.NEON_PROJECT_ID }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      # Matches the supabase devDependency in the root package.json
-      - uses: supabase/setup-cli@45a513f8c64c0bc8e0e3dfe572b5c95be85f6359 # v3.0.1
-        with:
-          version: 2.122.0
+      - name: Create Neon branch
+        run: >-
+          python3 scripts/neon_branch.py create
+          --parent production
+          --name migrate-${{ github.run_id }}-${{ github.run_attempt }}
+          --ttl-minutes 30
+          --github-env
 
-      - name: Link Supabase project
-        run: supabase link --project-ref ${{ secrets.SUPABASE_PROJECT_REF }}
-        env:
-          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+      # The same dbmate as the root devDependency; a direct connection, not the pooler
+      - name: Apply migrations to the copy
+        run: npx --yes dbmate@2.37.0 --url "$DATABASE_URL_DIRECT" --migrations-dir db/migrations --no-dump-schema up
+
+      - name: Delete Neon branch
+        if: always() && env.NEON_BRANCH_ID != ''
+        run: python3 scripts/neon_branch.py delete "$NEON_BRANCH_ID"
+
+  migrate:
+    needs: rehearse
+    runs-on: ubuntu-latest
+    # Production's connection string lives in this environment, which only main can deploy to
+    environment: neon-production
+    env:
+      # The direct (non-pooled) connection string for the production branch
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # Until the environment has its secret (set at cutover), there's nothing to migrate
+      - name: Check for the production connection string
+        id: ready
+        run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "::notice::neon-production has no DATABASE_URL secret yet; skipping."
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Run migrations
-        run: supabase db push
-        env:
-          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+        if: steps.ready.outputs.ready == 'true'
+        run: npx --yes dbmate@2.37.0 --migrations-dir db/migrations --no-dump-schema up
