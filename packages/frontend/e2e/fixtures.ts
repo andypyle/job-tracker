@@ -82,6 +82,10 @@ function sessionCookie(response: Response): Cookie {
     secure: true,
     // The app and Neon Auth are different sites
     sameSite: 'None',
+    // Neon Auth's cookies are partitioned (CHIPS), keyed by the app's site. Without the same key
+    // this would be a second cookie that sign-out doesn't clear, and a later sign-in would send
+    // both: the server reads the stale one and the user looks signed out.
+    partitionKey: `${new URL(ORIGIN).protocol}//${new URL(ORIGIN).hostname}`,
   }
 }
 
