@@ -1,14 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { getDemoCredentials, isDemoUser } from './demo'
-
-describe('isDemoUser', () => {
-  it('is true only when app_metadata.demo is true', () => {
-    expect(isDemoUser({ app_metadata: { provider: 'email', demo: true } })).toBe(true)
-    expect(isDemoUser({ app_metadata: { provider: 'email' } })).toBe(false)
-    expect(isDemoUser({ app_metadata: { demo: 'true' } })).toBe(false)
-    expect(isDemoUser(null)).toBe(false)
-  })
-})
+import { getDemoCredentials } from './demo'
 
 describe('getDemoCredentials', () => {
   it('needs both the email and the password', () => {

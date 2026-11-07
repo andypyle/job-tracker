@@ -26,7 +26,8 @@ type SignUpValues = z.infer<typeof schema>
 
 /**
  * What a sign-up came to. `signed-in` needs nothing from the screen (the page navigates);
- * `check-email` means Supabase sent a confirmation link; `email-taken` marks the email field.
+ * `check-email` means the email has to be verified first (off on Neon Auth unless "Verify email at
+ * sign-up" is turned on); `email-taken` marks the email field.
  */
 export type SignUpResult = 'signed-in' | 'check-email' | 'email-taken'
 
@@ -168,12 +169,12 @@ export function RegisterPage() {
   return (
     <SignUpScreen
       onSignUp={async (name, email, password) => {
-        const { user, session, error } = await signUp(name, email, password)
-        if (error?.code === 'user_already_exists' || error?.code === 'email_exists') return 'email-taken'
+        const { signedIn, error } = await signUp(name, email, password)
+        if (error?.code === 'USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL' || error?.code === 'USER_ALREADY_EXISTS') {
+          return 'email-taken'
+        }
         if (error) throw new Error(error.message)
-        // With email confirmation on, Supabase answers a taken email with a user that has no identities
-        if (user?.identities?.length === 0) return 'email-taken'
-        if (session) {
+        if (signedIn) {
           navigate('/')
           return 'signed-in'
         }

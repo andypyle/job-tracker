@@ -3,8 +3,7 @@ builder = "DOCKERFILE"
 dockerfilePath = "packages/frontend/Dockerfile"
 
 [build.buildArgs]
-VITE_SUPABASE_URL = "${{VITE_SUPABASE_URL}}"
-VITE_SUPABASE_ANON_KEY = "${{VITE_SUPABASE_ANON_KEY}}"
+VITE_NEON_AUTH_URL = "${{VITE_NEON_AUTH_URL}}"
 VITE_API_BASE_URL = "${{VITE_API_BASE_URL}}"
 
 [deploy]

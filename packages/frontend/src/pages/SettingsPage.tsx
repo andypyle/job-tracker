@@ -16,9 +16,9 @@ import { PageHeader } from '../components/PageHeader/PageHeader'
 import { PasswordInput } from '../components/PasswordInput/PasswordInput'
 import { Select } from '../components/Select/Select'
 import { useApplicationCounts } from '../hooks/useApplicationCounts'
+import { useAccount } from '../hooks/useAccount'
 import { useAuth } from '../hooks/useAuth'
 import { deleteAccount, getSettings, updateSettings } from '../lib/api'
-import { isDemoUser } from '../lib/demo'
 import { getInitials } from '../lib/initials'
 import { MIN_PASSWORD_LENGTH, passwordPair } from '../lib/passwords'
 import {
@@ -34,23 +34,22 @@ import { getDisplayName } from '../lib/userName'
 export interface SettingsScreenProps {
   /** The display name, as the sidebar shows it */
   name: string
+  /** Shown read-only: Neon Auth doesn't allow email changes */
   email: string
-  /** An email change waiting on its confirmation links (Supabase's `user.new_email`) */
-  pendingEmail?: string
   /** Undefined while loading */
   settings: UserSettings | undefined
   /** The settings couldn't load: Tracking says so instead of showing its form */
   settingsError?: boolean
   /** For the Delete account copy; undefined while the counts load */
   applicationCount?: number
-  /** The public demo account: a note replaces Profile, Email, Password and Delete account */
+  /** The public demo account: a note replaces Profile, Password and Delete account */
   demo?: boolean
+  /** Not yet known whether this is the demo: only Tracking shows until it is */
+  accountLoading?: boolean
   /** Saves the name; throw to show the message in the section */
   onSaveName: (name: string) => Promise<void>
-  /** `sent` once the confirmation links are on their way; `email-taken` marks the field. Throw for anything else. */
-  onChangeEmail: (email: string) => Promise<'sent' | 'email-taken'>
-  /** `same-password` marks the field. Throw for anything else. */
-  onChangePassword: (password: string) => Promise<'changed' | 'same-password'>
+  /** `wrong-password` marks the current-password field. Throw for anything else. */
+  onChangePassword: (currentPassword: string, newPassword: string) => Promise<'changed' | 'wrong-password'>
   onSaveTracking: (days: UnlikelyAfterDays | null) => Promise<void>
   /** Deletes the account; throw to show the message in the dialog. The caller leaves the page after. */
   onDeleteAccount: () => Promise<void>
@@ -64,13 +63,12 @@ export interface SettingsScreenProps {
 export function SettingsScreen({
   name,
   email,
-  pendingEmail,
   settings,
   settingsError,
   applicationCount,
   demo,
+  accountLoading,
   onSaveName,
-  onChangeEmail,
   onChangePassword,
   onSaveTracking,
   onDeleteAccount,
@@ -84,15 +82,16 @@ export function SettingsScreen({
       />
       {/* One 720px column from md, as in the frames; full width with 16px sides below */}
       <div className="flex flex-col gap-4 p-4 pb-24 md:max-w-[calc(45rem+--spacing(20))] md:gap-6 md:px-10 md:pt-8 md:pb-12">
-        {demo ? (
+        {accountLoading ? (
+          <TrackingSection settings={settings} error={settingsError} onSave={onSaveTracking} />
+        ) : demo ? (
           <>
             <DemoAccountSection />
             <TrackingSection settings={settings} error={settingsError} onSave={onSaveTracking} />
           </>
         ) : (
           <>
-            <ProfileSection name={name} onSave={onSaveName} />
-            <EmailSection email={email} pendingEmail={pendingEmail} onChange={onChangeEmail} />
+            <ProfileSection name={name} email={email} onSave={onSaveName} />
             <PasswordSection onChange={onChangePassword} />
             <TrackingSection settings={settings} error={settingsError} onSave={onSaveTracking} />
             <DeleteAccountSection email={email} applicationCount={applicationCount} onDelete={onDeleteAccount} />
@@ -171,7 +170,7 @@ function DemoAccountSection() {
 
 const nameSchema = z.object({ name: z.string().trim().min(1, 'Enter your name') })
 
-function ProfileSection({ name, onSave }: { name: string; onSave: (name: string) => Promise<void> }) {
+function ProfileSection({ name, email, onSave }: { name: string; email: string; onSave: (name: string) => Promise<void> }) {
   const submitError = useSubmitError()
   const {
     register,
@@ -208,65 +207,20 @@ function ProfileSection({ name, onSave }: { name: string; onSave: (name: string)
           <Input {...register('name')} autoComplete="name" />
         </FormField>
       </div>
+      <p className="text-body-small text-text-muted">
+        You sign in as <span className="text-text-primary">{email}</span>. Email addresses can’t be changed.
+      </p>
     </Section>
   )
 }
 
-const emailTaken = 'There’s already an account with this email.'
+const passwordChange = z.object({ currentPassword: z.string().min(1, 'Enter your current password') }).and(passwordPair)
 
-function EmailSection({
-  email,
-  pendingEmail,
+function PasswordSection({
   onChange,
 }: {
-  email: string
-  pendingEmail?: string
-  onChange: (email: string) => Promise<'sent' | 'email-taken'>
+  onChange: (currentPassword: string, newPassword: string) => Promise<'changed' | 'wrong-password'>
 }) {
-  const submitError = useSubmitError()
-  const schema = z.object({
-    email: z
-      .string()
-      .trim()
-      .min(1, 'Enter your email')
-      .email('Enter an email like name@example.com')
-      .refine((value) => value.toLowerCase() !== email.toLowerCase(), 'That’s already your email.'),
-  })
-  const {
-    register,
-    handleSubmit,
-    setError,
-    formState: { errors, isSubmitting },
-  } = useForm<z.infer<typeof schema>>({ resolver: zodResolver(schema), mode: 'onTouched', values: { email } })
-
-  const submit = handleSubmit(async (values) => {
-    submitError.clear()
-    try {
-      const result = await onChange(values.email.trim())
-      if (result === 'email-taken') setError('email', { message: emailTaken }, { shouldFocus: true })
-    } catch (err) {
-      submitError.fail(err)
-    }
-  })
-
-  return (
-    <Section title="Email" onSubmit={submit} submitError={submitError} action="Change email" pendingAction="Sending links…" pending={isSubmitting}>
-      <FormField
-        label="Email address"
-        hint={
-          pendingEmail
-            ? `Waiting on ${pendingEmail}: open the links we sent to both addresses to finish the change.`
-            : 'We’ll email confirmation links to your current and new address. The change applies once you open both.'
-        }
-        error={errors.email?.message}
-      >
-        <Input {...register('email')} type="email" autoComplete="email" inputMode="email" />
-      </FormField>
-    </Section>
-  )
-}
-
-function PasswordSection({ onChange }: { onChange: (password: string) => Promise<'changed' | 'same-password'> }) {
   const submitError = useSubmitError()
   const {
     register,
@@ -276,18 +230,22 @@ function PasswordSection({ onChange }: { onChange: (password: string) => Promise
     trigger,
     getFieldState,
     formState: { errors, isSubmitting, isSubmitted },
-  } = useForm<z.infer<typeof passwordPair>>({
-    resolver: zodResolver(passwordPair),
+  } = useForm<z.infer<typeof passwordChange>>({
+    resolver: zodResolver(passwordChange),
     mode: 'onTouched',
-    defaultValues: { password: '', confirmPassword: '' },
+    defaultValues: { currentPassword: '', password: '', confirmPassword: '' },
   })
 
-  const submit = handleSubmit(async ({ password }) => {
+  const submit = handleSubmit(async ({ currentPassword, password }) => {
     submitError.clear()
+    if (password === currentPassword) {
+      setError('password', { message: 'That’s your current password. Choose a new one.' }, { shouldFocus: true })
+      return
+    }
     try {
-      const result = await onChange(password)
-      if (result === 'same-password') {
-        setError('password', { message: 'That’s your current password. Choose a new one.' }, { shouldFocus: true })
+      const result = await onChange(currentPassword, password)
+      if (result === 'wrong-password') {
+        setError('currentPassword', { message: 'That’s not your current password.' }, { shouldFocus: true })
       } else {
         reset()
       }
@@ -298,6 +256,10 @@ function PasswordSection({ onChange }: { onChange: (password: string) => Promise
 
   return (
     <Section title="Password" onSubmit={submit} submitError={submitError} action="Change password" pendingAction="Changing…" pending={isSubmitting}>
+      {/* One column's width, lined up with New password below */}
+      <FormField label="Current password" error={errors.currentPassword?.message} className="sm:max-w-[calc(50%-0.5rem)]">
+        <PasswordInput {...register('currentPassword')} autoComplete="current-password" />
+      </FormField>
       {/* Side by side while each gets 240px, as in the frames; stacked on phones */}
       <div className="flex flex-wrap items-start gap-x-4 gap-y-5 *:min-w-60 *:flex-1">
         <FormField label="New password" hint={`Use at least ${MIN_PASSWORD_LENGTH} characters.`} error={errors.password?.message}>
@@ -537,9 +499,10 @@ function DeleteAccountDialog({ open, onClose, email, applicationCount, onDelete 
 // Page
 // ---------------------------------------------------------------------------
 
-/** The `/settings` route: the screen wired to Supabase auth, the settings API and the counts */
+/** The `/settings` route: the screen wired to Neon Auth, the account and settings APIs and the counts */
 export function SettingsPage() {
-  const { user, updateName, updateEmail, updatePassword, signOut } = useAuth()
+  const { user, updateName, changePassword, signOut } = useAuth()
+  const { isDemo } = useAccount()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const { isLoading: countsLoading, ...counts } = useApplicationCounts()
@@ -549,30 +512,19 @@ export function SettingsPage() {
     <SettingsScreen
       name={getDisplayName(user)}
       email={user?.email ?? ''}
-      pendingEmail={user?.new_email || undefined}
       settings={settings.data}
       settingsError={settings.isError}
       applicationCount={countsLoading ? undefined : counts.active + counts.unlikely + counts.rejected}
-      demo={isDemoUser(user)}
+      demo={isDemo}
+      accountLoading={isDemo === undefined}
       onSaveName={async (name) => {
         const { error } = await updateName(name)
         if (error) throw new Error(error.message)
         toast({ tone: 'positive', title: 'Name saved', message: name })
       }}
-      onChangeEmail={async (email) => {
-        const { error } = await updateEmail(email)
-        if (error?.code === 'email_exists') return 'email-taken'
-        if (error) throw new Error(error.message)
-        toast({
-          tone: 'positive',
-          title: 'Check your email',
-          message: `We sent confirmation links to ${user?.email} and ${email}. Open both to finish the change.`,
-        })
-        return 'sent'
-      }}
-      onChangePassword={async (password) => {
-        const { error } = await updatePassword(password)
-        if (error?.code === 'same_password') return 'same-password'
+      onChangePassword={async (currentPassword, newPassword) => {
+        const { error } = await changePassword(currentPassword, newPassword)
+        if (error?.code === 'INVALID_PASSWORD') return 'wrong-password'
         if (error) throw new Error(error.message)
         toast({ tone: 'positive', title: 'Password changed' })
         return 'changed'
@@ -584,8 +536,8 @@ export function SettingsPage() {
       }}
       onDeleteAccount={async () => {
         await deleteAccount()
-        // The server-side session went with the user, so only forget it here
-        await signOut('local')
+        // The server-side session went with the user; this forgets it here
+        await signOut()
         queryClient.clear()
         navigate('/login', { replace: true })
       }}

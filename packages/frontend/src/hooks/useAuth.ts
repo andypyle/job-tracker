@@ -1,120 +1,96 @@
-import { useState, useEffect } from 'react'
-import type { User, Session, AuthError } from '@supabase/supabase-js'
-import { supabase } from '../lib/supabase'
+import { authClient } from '../lib/auth'
 
-interface AuthState {
-  user: User | null
-  session: Session | null
+/** The signed-in user, as the app uses it. `name` is required at sign-up. */
+export interface AuthUser {
+  id: string
+  name: string
+  email: string
+}
+
+/** A failed auth call. `code` is Neon Auth's (Better Auth's), e.g. INVALID_EMAIL_OR_PASSWORD. */
+export interface AuthFailure {
+  code?: string
+  message: string
+}
+
+type Result = Promise<{ error: AuthFailure | null }>
+
+interface UseAuthReturn {
+  user: AuthUser | null
+  /** True until the first session check finishes */
   loading: boolean
-}
-
-interface SignUpResult {
-  user: User | null
-  /** Null when Supabase wants the email confirmed first */
-  session: Session | null
-  error: AuthError | null
-}
-
-interface UseAuthReturn extends AuthState {
-  signIn: (email: string, password: string) => Promise<{ error: AuthError | null }>
-  /** Stores `fullName` in `user_metadata.full_name`; read it with `getDisplayName`. */
-  signUp: (fullName: string, email: string, password: string) => Promise<SignUpResult>
+  signIn: (email: string, password: string) => Result
+  /** `signedIn` is false when Neon Auth wants the email verified first */
+  signUp: (name: string, email: string, password: string) => Promise<{ signedIn: boolean; error: AuthFailure | null }>
   /**
-   * Ends the session. `local` only forgets it in this browser, for when the server-side session
-   * is already gone (a deleted account).
+   * Ends the session. After the account is deleted the server-side session is already gone, so
+   * a failure is ignored and the session is re-read, which comes back empty.
    */
-  signOut: (scope?: 'global' | 'local') => Promise<void>
-  /** Saves `fullName` to `user_metadata.full_name`. Every useAuth user sees the change. */
-  updateName: (fullName: string) => Promise<{ error: AuthError | null }>
-  /**
-   * Starts an email change. With secure email change on, Supabase emails a link to the current
-   * and the new address, and the change applies once both are opened.
-   */
-  updateEmail: (email: string) => Promise<{ error: AuthError | null }>
-  updatePassword: (password: string) => Promise<{ error: AuthError | null }>
+  signOut: () => Promise<void>
+  /** Saves the name. Every useAuth user sees the change. */
+  updateName: (name: string) => Result
+  /** Neon Auth needs the current password to set a new one. Other sessions stay signed in. */
+  changePassword: (currentPassword: string, newPassword: string) => Result
 }
 
+function failure(error: { code?: string; message?: string; statusText?: string } | null | undefined): AuthFailure | null {
+  if (!error) return null
+  return { code: error.code, message: error.message || error.statusText || 'Something went wrong. Try again.' }
+}
+
+/** Calls an auth method that may also throw (the Neon wrapper throws on HTTP errors) */
+async function attempt<T>(call: () => Promise<{ data: T; error: Parameters<typeof failure>[0] }>) {
+  try {
+    const { data, error } = await call()
+    return { data, error: failure(error) }
+  } catch (err) {
+    const thrown = err as { code?: string; message?: string } | undefined
+    return { data: null, error: failure({ code: thrown?.code, message: thrown?.message }) }
+  }
+}
+
+/** Sign-in state from Neon Auth (Managed Better Auth), shared by every component that uses it */
 export function useAuth(): UseAuthReturn {
-  const [state, setState] = useState<AuthState>({
-    user: null,
-    session: null,
-    loading: true,
-  })
-
-  useEffect(() => {
-    // Initialize from existing session on mount
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setState({
-        user: session?.user ?? null,
-        session,
-        loading: false,
-      })
-    })
-
-    // Subscribe to auth state changes to keep user/session in sync
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      setState({
-        user: session?.user ?? null,
-        session,
-        loading: false,
-      })
-    })
-
-    // Unsubscribe on cleanup
-    return () => {
-      subscription.unsubscribe()
-    }
-  }, [])
-
-  const signIn = async (
-    email: string,
-    password: string,
-  ): Promise<{ error: AuthError | null }> => {
-    const { error } = await supabase.auth.signInWithPassword({ email, password })
-    return { error }
-  }
-
-  const signUp = async (
-    fullName: string,
-    email: string,
-    password: string,
-  ): Promise<SignUpResult> => {
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: { data: { full_name: fullName.trim() } },
-    })
-    return { user: data.user, session: data.session, error }
-  }
-
-  const signOut = async (scope: 'global' | 'local' = 'global'): Promise<void> => {
-    await supabase.auth.signOut({ scope })
-  }
-
-  const updateName = async (fullName: string): Promise<{ error: AuthError | null }> => {
-    const { error } = await supabase.auth.updateUser({ data: { full_name: fullName.trim() } })
-    return { error }
-  }
-
-  const updateEmail = async (email: string): Promise<{ error: AuthError | null }> => {
-    const { error } = await supabase.auth.updateUser({ email: email.trim() })
-    return { error }
-  }
-
-  const updatePassword = async (password: string): Promise<{ error: AuthError | null }> => {
-    const { error } = await supabase.auth.updateUser({ password })
-    return { error }
-  }
+  const session = authClient.useSession()
+  const sessionUser = session.data?.user
+  const user = sessionUser ? { id: sessionUser.id, name: sessionUser.name, email: sessionUser.email } : null
 
   return {
-    ...state,
-    signIn,
-    signUp,
-    signOut,
-    updateName,
-    updateEmail,
-    updatePassword,
+    user,
+    loading: session.isPending,
+
+    // Each waits for the session to refresh before resolving, so a caller that navigates to a
+    // protected route right after doesn't find the old (signed-out) state and bounce back
+    signIn: async (email, password) => {
+      const { error } = await attempt(() => authClient.signIn.email({ email, password }))
+      if (!error) await session.refetch()
+      return { error }
+    },
+
+    signUp: async (name, email, password) => {
+      const { data, error } = await attempt(() => authClient.signUp.email({ name: name.trim(), email, password }))
+      // No token: the branch requires a verified email before the first sign-in
+      const signedIn = Boolean(data && 'token' in data && data.token)
+      if (signedIn) await session.refetch()
+      return { signedIn, error }
+    },
+
+    signOut: async () => {
+      await attempt(() => authClient.signOut())
+      await session.refetch()
+    },
+
+    updateName: async (name) => {
+      const { error } = await attempt(() => authClient.updateUser({ name: name.trim() }))
+      if (!error) await session.refetch()
+      return { error }
+    },
+
+    changePassword: async (currentPassword, newPassword) => {
+      const { error } = await attempt(() =>
+        authClient.changePassword({ currentPassword, newPassword, revokeOtherSessions: false }),
+      )
+      return { error }
+    },
   }
 }

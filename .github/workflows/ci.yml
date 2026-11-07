@@ -113,9 +113,8 @@ jobs:
       run:
         working-directory: packages/frontend
     env:
-      # Placeholders: src/lib/supabase.ts throws at import without them. Tests mock the network.
-      VITE_SUPABASE_URL: https://fake.supabase.co
-      VITE_SUPABASE_ANON_KEY: fake-anon-key
+      # Placeholder: src/lib/auth.ts throws at import without it. Tests mock the network.
+      VITE_NEON_AUTH_URL: https://auth.test.invalid/neondb/auth
       VITE_API_BASE_URL: http://localhost:8000
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -149,10 +148,16 @@ jobs:
       - name: Build
         run: pnpm build
 
-  # The real stack: local Supabase (seeded from supabase/seed.sql), the FastAPI backend and a
-  # production build of the frontend, which Playwright starts (see playwright.config.ts)
+  # The real stack: a throwaway Neon branch of dev (synthetic data and the seeded demo; never
+  # production, and e2e/fixtures.ts refuses a database with real users), the FastAPI backend and
+  # a production build of the frontend, which Playwright starts (see playwright.config.ts).
+  # Needs NEON_API_KEY, so like the neon job it runs on pushes to main and manual runs only.
   e2e:
+    if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
+    env:
+      NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
+      NEON_PROJECT_ID: ${{ vars.NEON_PROJECT_ID }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
@@ -175,9 +180,19 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      # Only what the app uses: database, auth, REST, storage and the gateway
-      - name: Start Supabase
-        run: pnpm exec supabase start -x studio,imgproxy,edge-runtime,logflare,vector,supavisor,realtime,postgres-meta,mailpit
+      # Sets NEON_BRANCH_ID, DATABASE_URL(_DIRECT), NEON_AUTH_BASE_URL and the AWS_* storage settings
+      - name: Create Neon branch
+        run: >-
+          python scripts/neon_branch.py create
+          --parent dev
+          --name e2e-${{ github.run_id }}-${{ github.run_attempt }}
+          --ttl-minutes 60
+          --storage-credential
+          --github-env
+
+      # dev already has the applied migrations; this adds any new ones
+      - name: Apply migrations
+        run: pnpm exec dbmate --url "$DATABASE_URL_DIRECT" --migrations-dir db/migrations --no-dump-schema up
 
       - name: Install Playwright Chromium
         working-directory: packages/frontend
@@ -196,3 +211,7 @@ jobs:
             packages/frontend/playwright-report/
             packages/frontend/test-results/
           retention-days: 7
+
+      - name: Delete Neon branch
+        if: always() && env.NEON_BRANCH_ID != ''
+        run: python scripts/neon_branch.py delete "$NEON_BRANCH_ID"

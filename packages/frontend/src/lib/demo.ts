@@ -1,12 +1,7 @@
-import type { User } from '@supabase/supabase-js'
-
-/**
- * The public demo account: `app_metadata.demo` is true. Only the service role can set it.
- * Its profile, email and password can't change, uploads are off, and its data resets nightly.
+/*
+ * Whether the signed-in user is the public demo comes from the backend (GET /account, see
+ * useAccount): it's a row in demo_users, which the Neon Auth session and JWT don't carry.
  */
-export function isDemoUser(user: Pick<User, 'app_metadata'> | null | undefined): boolean {
-  return user?.app_metadata?.demo === true
-}
 
 /**
  * The demo account's sign-in, for Login's "Try the demo". Undefined unless both
