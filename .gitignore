@@ -19,9 +19,9 @@ __pycache__/
 # TaskMaster — config contains API keys, don't commit it
 .taskmaster/config.json
 
-# Local DB seed — contains personal data from live DB dump. Loaded after the
-# synthetic supabase/seed.sql (see supabase/config.toml).
-supabase/seed.local.sql
+# The old Supabase stack, removed after the move to Neon. Kept ignored: a local copy may still
+# hold seed.local.sql, a dump of real data that must never be committed.
+supabase/
 
 # pnpm
 .pnpm-store/

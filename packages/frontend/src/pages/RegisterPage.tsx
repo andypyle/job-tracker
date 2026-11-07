@@ -132,7 +132,7 @@ export function SignUpScreen({ onSignUp }: SignUpScreenProps) {
   )
 }
 
-/** Shown when Supabase wants the email confirmed before the first sign-in (Figma: Sign up, check your email) */
+/** Shown when Neon Auth wants the email verified before the first sign-in (Figma: Sign up, check your email) */
 function CheckEmail({ email }: { email: string }) {
   const headingRef = useRef<HTMLHeadingElement>(null)
   // The form is gone, so focus would fall to the body; start screen readers at the new heading
