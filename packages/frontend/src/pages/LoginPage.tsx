@@ -96,6 +96,13 @@ export function LoginScreen({ onSignIn, onTryDemo }: LoginScreenProps) {
         <FormField label="Password" error={errors.password?.message}>
           <PasswordInput {...register('password')} autoComplete="current-password" placeholder="Password" />
         </FormField>
+        {/* Tucked under the password field, half the usual gap */}
+        <Link
+          to="/forgot-password"
+          className={cn('-mt-3 self-end rounded-sm text-label-small text-text-link underline', focusRing)}
+        >
+          Forgot password?
+        </Link>
 
         <div className="flex flex-col gap-3">
           <Button type="submit" variant="primary" disabled={isSubmitting || openingDemo} className="w-full">

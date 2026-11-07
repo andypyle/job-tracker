@@ -32,13 +32,15 @@ export async function sql<Row extends pg.QueryResultRow = pg.QueryResultRow>(tex
 }
 
 /**
- * Refuses a database with real-looking users: only e2e-… test users, smoke-… users and the demo
+ * Refuses a database with real-looking users: only e2e-… test users (and delivered+e2e-…@resend.dev,
+ * the password-reset test's, which can receive mail), smoke-… users and the demo
  * belong on an E2E branch. Stops a run against production, or a copy of it, before it starts.
  */
 export async function assertDisposable() {
   const [{ others }] = await sql<{ others: string }>(
     `SELECT count(*) AS others FROM neon_auth."user"
-     WHERE email NOT LIKE 'e2e-%' AND email NOT LIKE 'smoke-%' AND email <> $1`,
+     WHERE email NOT LIKE 'e2e-%' AND email NOT LIKE 'smoke-%' AND email NOT LIKE 'delivered+e2e-%@resend.dev'
+       AND email <> $1`,
     [demoUser.email],
   )
   if (Number(others) > 0) {
