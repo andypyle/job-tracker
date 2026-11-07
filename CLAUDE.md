@@ -19,8 +19,6 @@ Neon branches:
 
 Migrations are plain SQL in `db/migrations`, run with dbmate: `pnpm db:new <name>` creates one (fill in `-- migrate:up` and `-- migrate:down`), `pnpm db:migrate` applies pending ones to the branch in `backend/.env`. Merging to `main` applies them to production (`.github/workflows/migrate.yml`, after a rehearsal on a copy). Never commit real data.
 
-`scripts/import_from_supabase.py` copied each user's data from the old Supabase project at cutover (2026-11-07). Remove it once that project is deleted.
-
 ## Architecture rules
 
 - **Data flow:** the frontend uses Neon Auth **only for auth** (`src/lib/auth.ts`, Better Auth's methods through `@neon/auth`; `useAuth` wraps them). All data goes through the FastAPI backend via the functions in `src/lib/api.ts`, which attaches the Neon Auth JWT. Never call `fetch`/axios from components, and never enable Neon's Data API.
