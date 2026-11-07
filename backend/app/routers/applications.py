@@ -1,156 +1,124 @@
 import logging
 from typing import Optional
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Response
+from fastapi import APIRouter, Depends, HTTPException, Response
 
-from app.config import get_settings
+from app import db
 from app.dependencies import get_current_user
-from app.models.application import (
-    ApplicationCreate,
-    ApplicationResponse,
-    ApplicationStatus,
-    ApplicationUpdate,
-    StatusHistory,
-)
+from app.models.application import ApplicationCreate, ApplicationStatus, ApplicationUpdate
 from app.services.storage import delete_file, get_signed_url
-from supabase import Client, create_client
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
+NOT_FOUND = "Application not found"
 
-def _get_user_client(authorization: str) -> Client:
-    """
-    Return a Supabase client scoped to the requesting user.
-    We pass the user's JWT so that Supabase RLS policies are enforced
-    against the correct user_id without any extra filtering on our side.
-    """
-    settings = get_settings()
-    token = authorization.removeprefix("Bearer ").strip()
-    client: Client = create_client(settings.SUPABASE_URL, settings.SUPABASE_ANON_KEY)
-    client.postgrest.auth(token)
-    return client
+# Every column a client may set. Inserts and updates build their SQL from these names only.
+WRITABLE_COLUMNS = (
+    "job_post_url",
+    "job_title",
+    "company",
+    "company_logo_url",
+    "industry",
+    "compensation",
+    "notes",
+    "is_referral",
+    "date_applied",
+    "status",
+)
 
 
-def _get_admin_client() -> Client:
-    """
-    Return a Supabase client using the service role key.
-    Used for history inserts and ownership-verified operations that need to
-    bypass RLS (e.g. scheduler writes, cross-table inserts after JWT verification).
-    Never use this without first verifying user ownership via the user-scoped client.
-    """
-    settings = get_settings()
-    return create_client(settings.SUPABASE_URL, settings.SUPABASE_SERVICE_ROLE_KEY)
+def _writable(data: dict) -> dict:
+    return {key: value for key, value in data.items() if key in WRITABLE_COLUMNS}
+
+
+async def _history(conn, application_id: str, user_id: str) -> list[dict]:
+    rows = await conn.fetch(
+        """
+        SELECT * FROM public.application_status_history
+        WHERE application_id = $1 AND user_id = $2
+        ORDER BY changed_at
+        """,
+        application_id,
+        user_id,
+    )
+    return [dict(row) for row in rows]
+
+
+async def _record_status(conn, application_id: str, user_id: str, old_status: Optional[str], new_status: str) -> None:
+    await conn.execute(
+        """
+        INSERT INTO public.application_status_history (application_id, user_id, old_status, new_status, is_automatic)
+        VALUES ($1, $2, $3, $4, false)
+        """,
+        application_id,
+        user_id,
+        old_status,
+        new_status,
+    )
 
 
 @router.get("")
 async def list_applications(
     status: Optional[ApplicationStatus] = None,
-    authorization: str = Header(...),
     user_id: str = Depends(get_current_user),
 ):
-    client = _get_user_client(authorization)
-
-    try:
-        query = (
-            client.table("applications")
-            .select("*")
-            .eq("user_id", user_id)
-            .order("date_applied", desc=True)
-            .order("created_at", desc=True)
-        )
-        if status is not None:
-            query = query.eq("status", status.value)
-
-        result = query.execute()
-    except Exception as exc:
-        raise HTTPException(status_code=500, detail=str(exc))
-
-    return {"data": result.data, "error": None}
+    rows = await db.pool().fetch(
+        """
+        SELECT * FROM public.applications
+        WHERE user_id = $1 AND ($2::public.application_status IS NULL OR status = $2::public.application_status)
+        ORDER BY date_applied DESC, created_at DESC
+        """,
+        user_id,
+        status.value if status else None,
+    )
+    return {"data": [dict(row) for row in rows], "error": None}
 
 
 @router.get("/{application_id}/history")
 async def get_application_history(
     application_id: str,
-    authorization: str = Header(...),
     user_id: str = Depends(get_current_user),
 ):
-    client = _get_user_client(authorization)
+    if not db.is_uuid(application_id):
+        raise HTTPException(status_code=404, detail=NOT_FOUND)
 
-    # Verify ownership
-    try:
-        existing = (
-            client.table("applications")
-            .select("id")
-            .eq("id", application_id)
-            .eq("user_id", user_id)
-            .single()
-            .execute()
+    async with db.pool().acquire() as conn:
+        exists = await conn.fetchval(
+            "SELECT EXISTS (SELECT 1 FROM public.applications WHERE id = $1 AND user_id = $2)",
+            application_id,
+            user_id,
         )
-    except Exception:
-        raise HTTPException(status_code=404, detail="Application not found")
+        if not exists:
+            raise HTTPException(status_code=404, detail=NOT_FOUND)
+        history = await _history(conn, application_id, user_id)
 
-    if not existing.data:
-        raise HTTPException(status_code=404, detail="Application not found")
-
-    admin_client = _get_admin_client()
-    try:
-        history_result = (
-            admin_client.table("application_status_history")
-            .select("*")
-            .eq("application_id", application_id)
-            .order("changed_at", desc=False)
-            .execute()
-        )
-    except Exception as exc:
-        raise HTTPException(status_code=500, detail=str(exc))
-
-    return {"data": history_result.data or [], "error": None}
+    return {"data": history, "error": None}
 
 
 @router.get("/{application_id}")
 async def get_application(
     application_id: str,
-    authorization: str = Header(...),
     user_id: str = Depends(get_current_user),
 ):
-    client = _get_user_client(authorization)
-    try:
-        result = (
-            client.table("applications")
-            .select("*")
-            .eq("id", application_id)
-            .eq("user_id", user_id)
-            .single()
-            .execute()
+    if not db.is_uuid(application_id):
+        raise HTTPException(status_code=404, detail=NOT_FOUND)
+
+    async with db.pool().acquire() as conn:
+        row = db.as_dict(
+            await conn.fetchrow(
+                "SELECT * FROM public.applications WHERE id = $1 AND user_id = $2",
+                application_id,
+                user_id,
+            )
         )
-    except Exception:
-        # supabase-py raises when .single() finds no rows
-        raise HTTPException(status_code=404, detail="Application not found")
+        if not row:
+            raise HTTPException(status_code=404, detail=NOT_FOUND)
+        row["status_history"] = await _history(conn, application_id, user_id)
 
-    row = result.data
-    if not row:
-        raise HTTPException(status_code=404, detail="Application not found")
-
-    # Generate signed URLs for any attached files
     row["resume_url"] = await get_signed_url(row["resume_path"]) if row.get("resume_path") else None
     row["cover_letter_url"] = await get_signed_url(row["cover_letter_path"]) if row.get("cover_letter_path") else None
-
-    # Fetch status history
-    try:
-        admin_client = _get_admin_client()
-        history_result = (
-            admin_client.table("application_status_history")
-            .select("*")
-            .eq("application_id", application_id)
-            .order("changed_at", desc=False)
-            .execute()
-        )
-        row["status_history"] = history_result.data or []
-    except Exception:
-        logger.exception("get_application: failed to fetch status history for %s", application_id)
-        row["status_history"] = []
 
     return {"data": row, "error": None}
 
@@ -158,44 +126,30 @@ async def get_application(
 @router.post("", status_code=201)
 async def create_application(
     payload: ApplicationCreate,
-    authorization: str = Header(...),
     user_id: str = Depends(get_current_user),
 ):
-    client = _get_user_client(authorization)
+    data = _writable(payload.model_dump())
+    data["status"] = payload.status.value  # Applied unless the client chose another
+    columns = list(data)
 
-    insert_data = payload.model_dump()
-    # Supabase expects ISO string for date
-    insert_data["date_applied"] = insert_data["date_applied"].isoformat()
-    insert_data["user_id"] = user_id
-    insert_data["status"] = payload.status.value  # Applied unless the client chose another
+    async with db.pool().acquire() as conn, conn.transaction():
+        row = dict(
+            await conn.fetchrow(
+                f"""
+                INSERT INTO public.applications (user_id, {", ".join(columns)})
+                VALUES ($1, {", ".join(f"${i}" for i in range(2, len(columns) + 2))})
+                RETURNING *
+                """,
+                user_id,
+                *data.values(),
+            )
+        )
+        # The creation entry: a NULL old_status
+        await _record_status(conn, row["id"], user_id, None, row["status"])
+        row["status_history"] = await _history(conn, row["id"], user_id)
 
-    try:
-        result = client.table("applications").insert(insert_data).execute()
-    except Exception as exc:
-        raise HTTPException(status_code=500, detail=str(exc))
-
-    if not result.data:
-        raise HTTPException(status_code=500, detail="Failed to create application")
-
-    row = result.data[0]
-    row.setdefault("resume_url", None)
-    row.setdefault("cover_letter_url", None)
-
-    # Insert initial status history row
-    admin_client = _get_admin_client()
-    try:
-        admin_client.table("application_status_history").insert({
-            "application_id": row["id"],
-            "user_id": user_id,
-            "old_status": None,
-            "new_status": row["status"],
-            "is_automatic": False,
-        }).execute()
-    except Exception:
-        logger.exception("create_application: failed to insert initial status history for %s", row["id"])
-
-    row.setdefault("status_history", [])
-
+    row["resume_url"] = None
+    row["cover_letter_url"] = None
     return {"data": row, "error": None}
 
 
@@ -203,113 +157,70 @@ async def create_application(
 async def update_application(
     application_id: str,
     payload: ApplicationUpdate,
-    authorization: str = Header(...),
     user_id: str = Depends(get_current_user),
 ):
-    client = _get_user_client(authorization)
-
-    # Verify ownership and capture current status in one query
-    try:
-        existing = (
-            client.table("applications")
-            .select("id, status")
-            .eq("id", application_id)
-            .eq("user_id", user_id)
-            .single()
-            .execute()
-        )
-    except Exception:
-        raise HTTPException(status_code=404, detail="Application not found")
-
-    if not existing.data:
-        raise HTTPException(status_code=404, detail="Application not found")
-
-    old_status = existing.data["status"]
-
-    # Only include fields that were explicitly provided
-    update_data = payload.model_dump(exclude_unset=True)
-    if not update_data:
+    # Only the fields the client sent
+    data = _writable(payload.model_dump(exclude_unset=True))
+    if not data:
         raise HTTPException(status_code=400, detail="No fields provided for update")
+    if data.get("status") is not None:
+        data["status"] = data["status"].value
 
-    # Serialize types that supabase-py won't handle automatically
-    if "date_applied" in update_data and update_data["date_applied"] is not None:
-        update_data["date_applied"] = update_data["date_applied"].isoformat()
-    if "status" in update_data and update_data["status"] is not None:
-        update_data["status"] = update_data["status"].value
+    if not db.is_uuid(application_id):
+        raise HTTPException(status_code=404, detail=NOT_FOUND)
 
-    try:
-        result = (
-            client.table("applications")
-            .update(update_data)
-            .eq("id", application_id)
-            .eq("user_id", user_id)
-            .execute()
+    async with db.pool().acquire() as conn, conn.transaction():
+        # Lock the row so the status we compare against can't change underneath us
+        old_status = await conn.fetchval(
+            "SELECT status FROM public.applications WHERE id = $1 AND user_id = $2 FOR UPDATE",
+            application_id,
+            user_id,
         )
-    except Exception as exc:
-        raise HTTPException(status_code=500, detail=str(exc))
+        if old_status is None:
+            raise HTTPException(status_code=404, detail=NOT_FOUND)
 
-    if not result.data:
-        raise HTTPException(status_code=404, detail="Application not found")
-
-    row = result.data[0]
-    row.setdefault("resume_url", None)
-    row.setdefault("cover_letter_url", None)
-
-    # Record a history entry if the status changed
-    new_status = update_data.get("status")
-    if new_status is not None and new_status != old_status:
-        admin_client = _get_admin_client()
-        try:
-            admin_client.table("application_status_history").insert({
-                "application_id": application_id,
-                "user_id": user_id,
-                "old_status": old_status,
-                "new_status": new_status,
-                "is_automatic": False,
-            }).execute()
-        except Exception:
-            logger.exception(
-                "update_application: failed to insert status history for %s (%s -> %s)",
-                application_id, old_status, new_status,
+        assignments = ", ".join(f"{column} = ${i}" for i, column in enumerate(data, start=3))
+        row = dict(
+            await conn.fetchrow(
+                f"UPDATE public.applications SET {assignments} WHERE id = $1 AND user_id = $2 RETURNING *",
+                application_id,
+                user_id,
+                *data.values(),
             )
+        )
 
+        new_status = data.get("status")
+        if new_status is not None and new_status != old_status:
+            await _record_status(conn, application_id, user_id, old_status, new_status)
+
+    row["resume_url"] = None
+    row["cover_letter_url"] = None
     return {"data": row, "error": None}
 
 
 @router.delete("/{application_id}", status_code=204)
 async def delete_application(
     application_id: str,
-    authorization: str = Header(...),
     user_id: str = Depends(get_current_user),
 ):
-    client = _get_user_client(authorization)
+    if not db.is_uuid(application_id):
+        raise HTTPException(status_code=404, detail=NOT_FOUND)
 
-    # Verify ownership and fetch file paths before deleting
-    try:
-        existing = (
-            client.table("applications")
-            .select("id, resume_path, cover_letter_path")
-            .eq("id", application_id)
-            .eq("user_id", user_id)
-            .single()
-            .execute()
-        )
-    except Exception:
-        raise HTTPException(status_code=404, detail="Application not found")
+    # Status history goes with the row (ON DELETE CASCADE)
+    row = await db.pool().fetchrow(
+        """
+        DELETE FROM public.applications WHERE id = $1 AND user_id = $2
+        RETURNING resume_path, cover_letter_path
+        """,
+        application_id,
+        user_id,
+    )
+    if row is None:
+        raise HTTPException(status_code=404, detail=NOT_FOUND)
 
-    if not existing.data:
-        raise HTTPException(status_code=404, detail="Application not found")
-
-    # Clean up associated files from Storage before removing the DB row
-    row = existing.data
-    if row.get("resume_path"):
-        await delete_file(row["resume_path"])
-    if row.get("cover_letter_path"):
-        await delete_file(row["cover_letter_path"])
-
-    try:
-        client.table("applications").delete().eq("id", application_id).eq("user_id", user_id).execute()
-    except Exception as exc:
-        raise HTTPException(status_code=500, detail=str(exc))
+    # Files go after the row, so a storage failure can't leave a row pointing at nothing
+    for path in (row["resume_path"], row["cover_letter_path"]):
+        if path:
+            await delete_file(path)
 
     return Response(status_code=204)

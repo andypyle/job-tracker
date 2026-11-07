@@ -1,9 +1,8 @@
 import logging
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Response, UploadFile
-from supabase import Client, create_client
+from fastapi import APIRouter, Depends, HTTPException, Response, UploadFile
 
-from app.config import get_settings
+from app import db
 from app.dependencies import get_current_user, reject_demo_user
 from app.services.storage import delete_file, upload_file
 
@@ -14,37 +13,35 @@ router = APIRouter()
 MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 MB
 
 
-def _get_user_client(authorization: str) -> Client:
-    """Return a Supabase client scoped to the requesting user (RLS enforced)."""
-    settings = get_settings()
-    token = authorization.removeprefix("Bearer ").strip()
-    client: Client = create_client(settings.SUPABASE_URL, settings.SUPABASE_ANON_KEY)
-    client.postgrest.auth(token)
-    return client
-
-
-def _verify_application_ownership(client: Client, application_id: str, user_id: str) -> dict:
+async def _verify_application_ownership(application_id: str, user_id: str) -> dict:
     """
-    Verify the application exists and belongs to user_id.
-    Returns the application row.
+    The application's file paths, if it exists and belongs to user_id.
     Raises HTTPException(404) if not found or not owned.
     """
-    try:
-        result = (
-            client.table("applications")
-            .select("id, resume_path, cover_letter_path")
-            .eq("id", application_id)
-            .eq("user_id", user_id)
-            .single()
-            .execute()
+    row = None
+    if db.is_uuid(application_id):
+        row = await db.pool().fetchrow(
+            "SELECT id, resume_path, cover_letter_path FROM public.applications WHERE id = $1 AND user_id = $2",
+            application_id,
+            user_id,
         )
-    except Exception:
+    if row is None:
         raise HTTPException(status_code=404, detail="Application not found")
+    return dict(row)
 
-    if not result.data:
-        raise HTTPException(status_code=404, detail="Application not found")
 
-    return result.data
+async def _set_path(application_id: str, user_id: str, field: str, path) -> None:
+    """Store (or clear) a file path. field is resume_path or cover_letter_path, never user input."""
+    try:
+        await db.pool().execute(
+            f"UPDATE public.applications SET {field} = $3 WHERE id = $1 AND user_id = $2",
+            application_id,
+            user_id,
+            path,
+        )
+    except Exception as exc:
+        logger.error("Failed to update %s for application %s: %s", field, application_id, exc)
+        raise HTTPException(status_code=500, detail="Failed to update application record")
 
 
 async def _validate_upload(file: UploadFile) -> bytes:
@@ -67,15 +64,13 @@ async def _upload_file_for_application(
     application_id: str,
     file_type: str,
     file: UploadFile,
-    authorization: str,
     user_id: str,
 ):
     """
     Shared logic for resume and cover_letter uploads.
     Returns a JSON-serialisable response dict.
     """
-    client = _get_user_client(authorization)
-    _verify_application_ownership(client, application_id, user_id)
+    await _verify_application_ownership(application_id, user_id)
 
     content = await _validate_upload(file)
 
@@ -88,14 +83,7 @@ async def _upload_file_for_application(
     )
 
     # Persist the path back to the applications row
-    field = f"{file_type}_path"
-    try:
-        client.table("applications").update({field: path}).eq("id", application_id).eq(
-            "user_id", user_id
-        ).execute()
-    except Exception as exc:
-        logger.error("Failed to update %s for application %s: %s", field, application_id, exc)
-        raise HTTPException(status_code=500, detail="Failed to update application record")
+    await _set_path(application_id, user_id, f"{file_type}_path", path)
 
     return {"data": {"path": path}, "error": None}
 
@@ -103,15 +91,13 @@ async def _upload_file_for_application(
 async def _delete_file_for_application(
     application_id: str,
     file_type: str,
-    authorization: str,
     user_id: str,
 ) -> Response:
     """
     Shared logic for resume and cover_letter deletions.
     Returns a 204 No Content response.
     """
-    client = _get_user_client(authorization)
-    app_row = _verify_application_ownership(client, application_id, user_id)
+    app_row = await _verify_application_ownership(application_id, user_id)
 
     field = f"{file_type}_path"
     existing_path = app_row.get(field)
@@ -120,13 +106,7 @@ async def _delete_file_for_application(
         await delete_file(existing_path)
 
     # Null out the path in the DB regardless of whether a file existed
-    try:
-        client.table("applications").update({field: None}).eq("id", application_id).eq(
-            "user_id", user_id
-        ).execute()
-    except Exception as exc:
-        logger.error("Failed to clear %s for application %s: %s", field, application_id, exc)
-        raise HTTPException(status_code=500, detail="Failed to update application record")
+    await _set_path(application_id, user_id, field, None)
 
     return Response(status_code=204)
 
@@ -140,14 +120,12 @@ async def _delete_file_for_application(
 async def upload_resume(
     application_id: str,
     file: UploadFile,
-    authorization: str = Header(...),
     user_id: str = Depends(get_current_user),
 ):
     return await _upload_file_for_application(
         application_id=application_id,
         file_type="resume",
         file=file,
-        authorization=authorization,
         user_id=user_id,
     )
 
@@ -155,13 +133,11 @@ async def upload_resume(
 @router.delete("/{application_id}/resume", status_code=204)
 async def delete_resume(
     application_id: str,
-    authorization: str = Header(...),
     user_id: str = Depends(get_current_user),
 ):
     return await _delete_file_for_application(
         application_id=application_id,
         file_type="resume",
-        authorization=authorization,
         user_id=user_id,
     )
 
@@ -175,14 +151,12 @@ async def delete_resume(
 async def upload_cover_letter(
     application_id: str,
     file: UploadFile,
-    authorization: str = Header(...),
     user_id: str = Depends(get_current_user),
 ):
     return await _upload_file_for_application(
         application_id=application_id,
         file_type="cover_letter",
         file=file,
-        authorization=authorization,
         user_id=user_id,
     )
 
@@ -190,12 +164,10 @@ async def upload_cover_letter(
 @router.delete("/{application_id}/cover_letter", status_code=204)
 async def delete_cover_letter(
     application_id: str,
-    authorization: str = Header(...),
     user_id: str = Depends(get_current_user),
 ):
     return await _delete_file_for_application(
         application_id=application_id,
         file_type="cover_letter",
-        authorization=authorization,
         user_id=user_id,
     )

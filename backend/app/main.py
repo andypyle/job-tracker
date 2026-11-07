@@ -1,9 +1,12 @@
 import logging
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+import asyncpg
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
+from app import db
 from app.config import get_settings
 from app.routers.account import router as account_router
 from app.routers.applications import router as applications_router
@@ -21,9 +24,11 @@ logger.info("FRONTEND_URL: %s", settings.FRONTEND_URL)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    await db.open_pool()
     start_scheduler()
     yield
     stop_scheduler()
+    await db.close_pool()
 
 
 app = FastAPI(title="Job Application Tracker API", lifespan=lifespan)
@@ -35,6 +40,17 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+
+# Handlers for specific exceptions run inside CORSMiddleware, so the browser sees the 500 rather
+# than a CORS failure (a bare unhandled exception skips it)
+@app.exception_handler(asyncpg.PostgresError)
+@app.exception_handler(asyncpg.InterfaceError)
+async def database_error(request: Request, exc: Exception) -> JSONResponse:
+    logger.error("Database error on %s %s: %s", request.method, request.url.path, exc)
+    return JSONResponse(status_code=500, content={"data": None, "error": "Database error"})
+
 
 app.include_router(opengraph_router, prefix="/opengraph", tags=["opengraph"])
 app.include_router(applications_router, prefix="/applications", tags=["applications"])

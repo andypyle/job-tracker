@@ -1,128 +1,68 @@
-"""
-Tests for DELETE /account.
+"""Tests for GET and DELETE /account."""
+from unittest.mock import AsyncMock, call, patch
 
-All Supabase calls are mocked: create_client and delete_file are patched where the router imports them.
-"""
-from unittest.mock import AsyncMock, MagicMock, call, patch
-
-from tests.conftest import TEST_USER_ID
-
-AUTH_HEADER = {"Authorization": "Bearer fake-token"}
+from app.dependencies import get_current_user
+from app.main import app
+from tests.conftest import make_application, make_demo_user, make_user, sql
 
 
-def _make_admin_mock(rows=None, select_exc=None, delete_exc=None):
-    chain = MagicMock()
-    chain.select.return_value = chain
-    chain.eq.return_value = chain
-    if select_exc:
-        chain.execute.side_effect = select_exc
-    else:
-        chain.execute.return_value = MagicMock(data=rows or [])
-
-    admin = MagicMock()
-    admin.table.return_value = chain
-    if delete_exc:
-        admin.auth.admin.delete_user.side_effect = delete_exc
-    return admin, chain
+def test_get_account_for_a_regular_user(client):
+    assert client.get("/account").json() == {"data": {"is_demo": False}, "error": None}
 
 
-def test_delete_account_deletes_the_user_and_their_files(client):
-    rows = [
-        {"resume_path": f"{TEST_USER_ID}/a/resume.pdf", "cover_letter_path": f"{TEST_USER_ID}/a/cover_letter.pdf"},
-        {"resume_path": None, "cover_letter_path": None},
-        {"resume_path": f"{TEST_USER_ID}/b/resume.pdf", "cover_letter_path": None},
-    ]
-    admin, chain = _make_admin_mock(rows)
+def test_get_account_for_the_demo(client):
+    demo_id = make_demo_user()
+    app.dependency_overrides[get_current_user] = lambda: demo_id
 
-    with (
-        patch("app.routers.account.create_client", return_value=admin) as create,
-        patch("app.routers.account.delete_file", new_callable=AsyncMock) as delete_file,
-    ):
-        resp = client.delete("/account", headers=AUTH_HEADER)
+    assert client.get("/account").json() == {"data": {"is_demo": True}, "error": None}
+
+
+def test_delete_account_deletes_the_user_their_rows_and_their_files(client, user_id):
+    a = make_application(user_id, resume_path=f"{user_id}/a/resume.pdf", cover_letter_path=f"{user_id}/a/cover_letter.pdf")
+    make_application(user_id)
+    make_application(user_id, resume_path=f"{user_id}/b/resume.pdf")
+    sql("INSERT INTO application_status_history (application_id, user_id, new_status) VALUES ($1, $2, 'Applied')", a, user_id)
+    sql("INSERT INTO user_settings (user_id, unlikely_after_days) VALUES ($1, 30)", user_id)
+    sql('INSERT INTO neon_auth.account ("userId", password) VALUES ($1, $2)', user_id, "hash")
+    other = make_user("other@example.com")
+    make_application(other, resume_path=f"{other}/c/resume.pdf")
+
+    with patch("app.routers.account.delete_file", new_callable=AsyncMock) as delete_file:
+        resp = client.delete("/account")
 
     assert resp.status_code == 204
-    # The service role client: deleting an auth user needs it
-    assert create.call_args.args[1] == "fake-service-role-key"
-    # Only the JWT's user, never anything from the request
-    chain.eq.assert_called_once_with("user_id", TEST_USER_ID)
-    admin.auth.admin.delete_user.assert_called_once_with(TEST_USER_ID)
-    assert delete_file.call_args_list == [
-        call(f"{TEST_USER_ID}/a/resume.pdf"),
-        call(f"{TEST_USER_ID}/a/cover_letter.pdf"),
-        call(f"{TEST_USER_ID}/b/resume.pdf"),
-    ]
-
-
-def test_delete_account_without_applications(client):
-    admin, _ = _make_admin_mock([])
-
-    with (
-        patch("app.routers.account.create_client", return_value=admin),
-        patch("app.routers.account.delete_file", new_callable=AsyncMock) as delete_file,
-    ):
-        resp = client.delete("/account", headers=AUTH_HEADER)
-
-    assert resp.status_code == 204
-    admin.auth.admin.delete_user.assert_called_once_with(TEST_USER_ID)
-    delete_file.assert_not_called()
-
-
-def test_delete_account_keeps_files_when_the_user_delete_fails(client):
-    """A failed user delete leaves the account whole: its files stay too."""
-    admin, _ = _make_admin_mock(
-        [{"resume_path": f"{TEST_USER_ID}/a/resume.pdf", "cover_letter_path": None}],
-        delete_exc=RuntimeError("auth down"),
+    assert sorted(delete_file.await_args_list) == sorted(
+        [call(f"{user_id}/a/resume.pdf"), call(f"{user_id}/a/cover_letter.pdf"), call(f"{user_id}/b/resume.pdf")]
     )
-
-    with (
-        patch("app.routers.account.create_client", return_value=admin),
-        patch("app.routers.account.delete_file", new_callable=AsyncMock) as delete_file,
-    ):
-        resp = client.delete("/account", headers=AUTH_HEADER)
-
-    assert resp.status_code == 500
-    delete_file.assert_not_called()
+    assert sql('SELECT id FROM neon_auth."user"') == [{"id": other}]
+    for table in ("application_status_history", "user_settings", "neon_auth.account"):
+        assert sql(f"SELECT count(*) AS n FROM {table}")[0]["n"] == 0, table
+    # Only the other user's application is left
+    assert sql("SELECT user_id FROM applications") == [{"user_id": other}]
 
 
-def test_delete_account_stops_when_the_file_lookup_fails(client):
-    admin, _ = _make_admin_mock(select_exc=RuntimeError("db down"))
+def test_delete_account_without_applications(client, user_id):
+    with patch("app.routers.account.delete_file", new_callable=AsyncMock) as delete_file:
+        resp = client.delete("/account")
 
-    with (
-        patch("app.routers.account.create_client", return_value=admin),
-        patch("app.routers.account.delete_file", new_callable=AsyncMock),
-    ):
-        resp = client.delete("/account", headers=AUTH_HEADER)
-
-    assert resp.status_code == 500
-    admin.auth.admin.delete_user.assert_not_called()
+    assert resp.status_code == 204
+    delete_file.assert_not_awaited()
+    assert sql('SELECT count(*) AS n FROM neon_auth."user"')[0]["n"] == 0
 
 
-def test_delete_account_refuses_the_demo_account(client, mock_auth_user):
-    mock_auth_user["app_metadata"]["demo"] = True
-    admin, _ = _make_admin_mock([])
+def test_delete_account_refuses_the_demo_account(client):
+    demo_id = make_demo_user()
+    make_application(demo_id)
+    app.dependency_overrides[get_current_user] = lambda: demo_id
 
-    with patch("app.routers.account.create_client", return_value=admin):
-        resp = client.delete("/account", headers=AUTH_HEADER)
+    with patch("app.routers.account.delete_file", new_callable=AsyncMock) as delete_file:
+        resp = client.delete("/account")
 
     assert resp.status_code == 403
-    admin.auth.admin.delete_user.assert_not_called()
+    delete_file.assert_not_awaited()
+    assert sql('SELECT count(*) AS n FROM neon_auth."user" WHERE id = $1', demo_id)[0]["n"] == 1
 
 
-def test_delete_account_needs_a_signed_in_user():
-    """Without the dependency override, a request with no Authorization header deletes nothing."""
-    from fastapi.testclient import TestClient
-
-    from app.main import app
-
-    admin, _ = _make_admin_mock([])
-    with (
-        patch("app.main.start_scheduler"),
-        patch("app.main.stop_scheduler"),
-        patch("app.routers.account.create_client", return_value=admin),
-        TestClient(app) as anonymous,
-    ):
-        resp = anonymous.delete("/account")
-
-    # FastAPI rejects the missing required header before get_current_user runs
-    assert resp.status_code in (401, 422)
-    admin.auth.admin.delete_user.assert_not_called()
+def test_account_routes_need_a_signed_in_user(anonymous_client):
+    assert anonymous_client.delete("/account").status_code == 422  # no Authorization header
+    assert anonymous_client.delete("/account", headers={"Authorization": "Basic abc"}).status_code == 401
