@@ -1,11 +1,12 @@
 import { useState } from 'react'
 import { Outlet, useMatch, useNavigate, useOutletContext } from 'react-router-dom'
+import { useQueryClient } from '@tanstack/react-query'
 import { AppShell } from '../components/AppShell/AppShell'
 import { ApplicationDialog } from '../components/ApplicationDialog/ApplicationDialog'
 import { useApplicationCounts } from '../hooks/useApplicationCounts'
+import { useAccount } from '../hooks/useAccount'
 import { useAuth } from '../hooks/useAuth'
 import { useSaveApplication } from '../hooks/useSaveApplication'
-import { isDemoUser } from '../lib/demo'
 import { getDisplayName } from '../lib/userName'
 
 interface AppLayoutContext {
@@ -24,6 +25,8 @@ export function useAddApplication() {
  */
 export function AppLayout() {
   const { user, signOut } = useAuth()
+  const queryClient = useQueryClient()
+  const { isDemo } = useAccount()
   const navigate = useNavigate()
   const saveApplication = useSaveApplication()
   const { isLoading, ...counts } = useApplicationCounts()
@@ -38,6 +41,8 @@ export function AppLayout() {
       user={{ name: getDisplayName(user), email: user?.email }}
       onSignOut={async () => {
         await signOut()
+        // The next user mustn't see this one's data, or their demo flag
+        queryClient.clear()
         navigate('/login')
       }}
       onAddApplication={onDetail || onSettings ? undefined : openAddApplication}
@@ -50,7 +55,8 @@ export function AppLayout() {
           await saveApplication(values)
           setAdding(false)
         }}
-        allowUploads={!isDemoUser(user)}
+        // Off until GET /account says this isn't the demo, which can't upload
+        allowUploads={isDemo === false}
       />
     </AppShell>
   )

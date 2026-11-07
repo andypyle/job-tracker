@@ -106,3 +106,16 @@ export interface UserSettings {
 
 /** Body of PATCH /settings. Every field is required: null means never, not "unchanged". */
 export type UserSettingsUpdate = UserSettings
+
+// ---------------------------------------------------------------------------
+// Account
+// ---------------------------------------------------------------------------
+
+/**
+ * Shape of GET /account: what the backend knows about the signed-in user beyond their Neon Auth
+ * profile (name and email come from the session).
+ */
+export interface Account {
+  /** The public demo: its profile and password can't change, uploads are off, its data resets nightly */
+  is_demo: boolean
+}

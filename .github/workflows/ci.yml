@@ -21,6 +21,21 @@ jobs:
     defaults:
       run:
         working-directory: backend
+    # The tests run real SQL. Same major version as the Neon project; conftest.py stands in for
+    # Neon Auth's tables and applies db/migrations.
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_HOST_AUTH_METHOD: trust
+          POSTGRES_DB: jobtracker_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 2s
+          --health-timeout 5s
+          --health-retries 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
@@ -37,9 +52,60 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements-dev.txt
 
-      # conftest.py fakes the Supabase env vars and mocks the client, so no secrets are needed
+      # Neon Auth and Object Storage are faked or patched, so no secrets are needed
       - name: Run tests
         run: pytest
+        env:
+          TEST_DATABASE_URL: postgresql://postgres@localhost:5432/jobtracker_test
+
+  # What the backend job's stand-ins can't cover, on a throwaway Neon branch of production:
+  # the migrations against Neon's real schema (including the neon_auth tables our triggers sit
+  # on), then live smoke tests with real Neon Auth tokens and Object Storage (backend/smoke).
+  # The branch copies production, but only throwaway users are created and it's deleted after;
+  # it also expires on its own in case the job dies first.
+  # Only on pushes to main and manual runs (Actions > CI > Run workflow, on any branch), to keep
+  # the NEON_API_KEY secret out of PR runs. Run it by hand on a branch that touches migrations.
+  neon:
+    if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    env:
+      NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
+      NEON_PROJECT_ID: ${{ vars.NEON_PROJECT_ID }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: |
+            backend/requirements.txt
+            backend/requirements-dev.txt
+
+      - name: Install backend dependencies
+        run: pip install -r backend/requirements-dev.txt
+
+      # Sets NEON_BRANCH_ID, DATABASE_URL(_DIRECT), NEON_AUTH_BASE_URL and the AWS_* storage settings
+      - name: Create Neon branch
+        run: >-
+          python scripts/neon_branch.py create
+          --parent production
+          --name ci-${{ github.run_id }}-${{ github.run_attempt }}
+          --ttl-minutes 60
+          --storage-credential
+          --github-env
+
+      # The same dbmate as the root devDependency; a direct connection, not the pooler
+      - name: Apply migrations
+        run: npx --yes dbmate@2.37.0 --url "$DATABASE_URL_DIRECT" --migrations-dir db/migrations --no-dump-schema up
+
+      - name: Smoke tests
+        working-directory: backend
+        run: pytest smoke
+
+      - name: Delete Neon branch
+        if: always() && env.NEON_BRANCH_ID != ''
+        run: python scripts/neon_branch.py delete "$NEON_BRANCH_ID"
 
   frontend:
     runs-on: ubuntu-latest
@@ -47,9 +113,8 @@ jobs:
       run:
         working-directory: packages/frontend
     env:
-      # Placeholders: src/lib/supabase.ts throws at import without them. Tests mock the network.
-      VITE_SUPABASE_URL: https://fake.supabase.co
-      VITE_SUPABASE_ANON_KEY: fake-anon-key
+      # Placeholder: src/lib/auth.ts throws at import without it. Tests mock the network.
+      VITE_NEON_AUTH_URL: https://auth.test.invalid/neondb/auth
       VITE_API_BASE_URL: http://localhost:8000
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -83,10 +148,16 @@ jobs:
       - name: Build
         run: pnpm build
 
-  # The real stack: local Supabase (seeded from supabase/seed.sql), the FastAPI backend and a
-  # production build of the frontend, which Playwright starts (see playwright.config.ts)
+  # The real stack: a throwaway Neon branch of dev (synthetic data and the seeded demo; never
+  # production, and e2e/fixtures.ts refuses a database with real users), the FastAPI backend and
+  # a production build of the frontend, which Playwright starts (see playwright.config.ts).
+  # Needs NEON_API_KEY, so like the neon job it runs on pushes to main and manual runs only.
   e2e:
+    if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
+    env:
+      NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
+      NEON_PROJECT_ID: ${{ vars.NEON_PROJECT_ID }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
@@ -109,9 +180,19 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      # Only what the app uses: database, auth, REST, storage and the gateway
-      - name: Start Supabase
-        run: pnpm exec supabase start -x studio,imgproxy,edge-runtime,logflare,vector,supavisor,realtime,postgres-meta,mailpit
+      # Sets NEON_BRANCH_ID, DATABASE_URL(_DIRECT), NEON_AUTH_BASE_URL and the AWS_* storage settings
+      - name: Create Neon branch
+        run: >-
+          python scripts/neon_branch.py create
+          --parent dev
+          --name e2e-${{ github.run_id }}-${{ github.run_attempt }}
+          --ttl-minutes 60
+          --storage-credential
+          --github-env
+
+      # dev already has the applied migrations; this adds any new ones
+      - name: Apply migrations
+        run: pnpm exec dbmate --url "$DATABASE_URL_DIRECT" --migrations-dir db/migrations --no-dump-schema up
 
       - name: Install Playwright Chromium
         working-directory: packages/frontend
@@ -130,3 +211,7 @@ jobs:
             packages/frontend/playwright-report/
             packages/frontend/test-results/
           retention-days: 7
+
+      - name: Delete Neon branch
+        if: always() && env.NEON_BRANCH_ID != ''
+        run: python scripts/neon_branch.py delete "$NEON_BRANCH_ID"

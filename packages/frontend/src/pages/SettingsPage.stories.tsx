@@ -37,7 +37,6 @@ const meta = {
     settings: { unlikely_after_days: 14 },
     applicationCount: 24,
     onSaveName: fn(async () => {}),
-    onChangeEmail: fn<SettingsScreenProps['onChangeEmail']>(async () => 'sent'),
     onChangePassword: fn<SettingsScreenProps['onChangePassword']>(async () => 'changed'),
     onSaveTracking: fn(async () => {}),
     onDeleteAccount: fn(() => deletion.promise),
@@ -75,13 +74,15 @@ export const Default: Story = {
     const titles = main.getAllByRole('region').map((section) => within(section).getByRole('heading', { level: 2 }).textContent)
     await expect(titles).toEqual([
       'Profile',
-      'Email',
       'Password',
       'Tracking',
       'Delete account',
     ])
     await expect(region(canvas, 'Profile').getByLabelText('Full name')).toHaveValue('Alex Rivera')
-    await expect(region(canvas, 'Email').getByLabelText('Email address')).toHaveValue('alex@example.com')
+    // Email is read-only: Neon Auth doesn't allow changing it
+    await expect(region(canvas, 'Profile').getByText('alex@example.com')).toBeVisible()
+    await expect(main.queryByRole('textbox', { name: /email/i })).not.toBeInTheDocument()
+    await expect(region(canvas, 'Password').getByLabelText('Current password')).toHaveValue('')
     await expect(region(canvas, 'Password').getByLabelText('New password')).toHaveValue('')
     await expect(region(canvas, 'Tracking').getByRole('combobox', { name: 'Move to Unlikely after' })).toHaveTextContent('14 days')
     await expect(region(canvas, 'Delete account').getByText(/all 24 applications/)).toBeVisible()
@@ -150,62 +151,14 @@ export const SaveFailed: Story = {
     const alert = await profile.findByRole('alert')
     await expect(alert).toHaveTextContent('Network Error')
     await waitFor(() => expect(alert).toHaveFocus())
-    await expect(region(canvas, 'Email').queryByRole('alert')).not.toBeInTheDocument()
-  },
-}
-
-export const ChangeEmail: Story = {
-  play: async ({ canvas, args }) => {
-    const section = region(canvas, 'Email')
-    const field = section.getByLabelText('Email address')
-    const submit = section.getByRole('button', { name: 'Change email' })
-
-    // The current address, in any case, isn't a change
-    await userEvent.clear(field)
-    await userEvent.type(field, 'Alex@Example.com')
-    await userEvent.click(submit)
-    await expect(await section.findByText('That’s already your email.')).toBeVisible()
-
-    await userEvent.clear(field)
-    await userEvent.type(field, 'not-an-email')
-    await userEvent.click(submit)
-    await expect(await section.findByText('Enter an email like name@example.com')).toBeVisible()
-    await expect(args.onChangeEmail).not.toHaveBeenCalled()
-
-    await userEvent.clear(field)
-    await userEvent.type(field, 'alex.rivera@example.org')
-    await userEvent.click(submit)
-    await expect(args.onChangeEmail).toHaveBeenCalledWith('alex.rivera@example.org')
-  },
-}
-
-export const EmailTaken: Story = {
-  args: { onChangeEmail: fn<SettingsScreenProps['onChangeEmail']>(async () => 'email-taken') },
-  play: async ({ canvas }) => {
-    const section = region(canvas, 'Email')
-    const field = section.getByLabelText('Email address')
-    await userEvent.clear(field)
-    await userEvent.type(field, 'sam@example.com')
-    await userEvent.click(section.getByRole('button', { name: 'Change email' }))
-    await expect(await section.findByText('There’s already an account with this email.')).toBeVisible()
-    await expect(field).toHaveFocus()
-    await expect(field).toHaveAttribute('aria-invalid', 'true')
-  },
-}
-
-/** An email change waiting on its confirmation links */
-export const EmailPending: Story = {
-  args: { pendingEmail: 'alex.rivera@example.org' },
-  play: async ({ canvas }) => {
-    await expect(region(canvas, 'Email').getByLabelText('Email address')).toHaveAccessibleDescription(
-      'Waiting on alex.rivera@example.org: open the links we sent to both addresses to finish the change.',
-    )
+    await expect(region(canvas, 'Password').queryByRole('alert')).not.toBeInTheDocument()
   },
 }
 
 export const ChangePassword: Story = {
   play: async ({ canvas, args }) => {
     const section = region(canvas, 'Password')
+    const current = section.getByLabelText('Current password')
     const password = section.getByLabelText('New password')
     const confirm = section.getByLabelText('Confirm new password')
     const submit = section.getByRole('button', { name: 'Change password' })
@@ -213,31 +166,51 @@ export const ChangePassword: Story = {
     await userEvent.type(password, 'short')
     await userEvent.type(confirm, 'other')
     await userEvent.click(submit)
-    await expect(await section.findByText('Use at least 8 characters.')).toBeVisible()
+    await expect(await section.findByText('Enter your current password')).toBeVisible()
+    await expect(section.getByText('Use at least 8 characters.')).toBeVisible()
     await expect(section.getByText('Passwords don’t match.')).toBeVisible()
     await expect(args.onChangePassword).not.toHaveBeenCalled()
 
+    await userEvent.type(current, 'old-password-1')
     await userEvent.clear(password)
     await userEvent.type(password, 'correct-horse-battery')
     await userEvent.clear(confirm)
     await userEvent.type(confirm, 'correct-horse-battery')
     await userEvent.click(submit)
-    await expect(args.onChangePassword).toHaveBeenCalledWith('correct-horse-battery')
+    await expect(args.onChangePassword).toHaveBeenCalledWith('old-password-1', 'correct-horse-battery')
     // Cleared once it's changed
     await waitFor(() => expect(password).toHaveValue(''))
+    await expect(current).toHaveValue('')
     await expect(confirm).toHaveValue('')
   },
 }
 
+/** The new password can't be the one typed as current; caught before anything is sent */
 export const SamePassword: Story = {
-  args: { onChangePassword: fn<SettingsScreenProps['onChangePassword']>(async () => 'same-password') },
-  play: async ({ canvas }) => {
+  play: async ({ canvas, args }) => {
     const section = region(canvas, 'Password')
+    await userEvent.type(section.getByLabelText('Current password'), 'correct-horse-battery')
     await userEvent.type(section.getByLabelText('New password'), 'correct-horse-battery')
     await userEvent.type(section.getByLabelText('Confirm new password'), 'correct-horse-battery')
     await userEvent.click(section.getByRole('button', { name: 'Change password' }))
     await expect(await section.findByText('That’s your current password. Choose a new one.')).toBeVisible()
     await expect(section.getByLabelText('New password')).toHaveFocus()
+    await expect(args.onChangePassword).not.toHaveBeenCalled()
+  },
+}
+
+export const WrongCurrentPassword: Story = {
+  args: { onChangePassword: fn<SettingsScreenProps['onChangePassword']>(async () => 'wrong-password') },
+  play: async ({ canvas }) => {
+    const section = region(canvas, 'Password')
+    const current = section.getByLabelText('Current password')
+    await userEvent.type(current, 'not-it-at-all')
+    await userEvent.type(section.getByLabelText('New password'), 'correct-horse-battery')
+    await userEvent.type(section.getByLabelText('Confirm new password'), 'correct-horse-battery')
+    await userEvent.click(section.getByRole('button', { name: 'Change password' }))
+    await expect(await section.findByText('That’s not your current password.')).toBeVisible()
+    await expect(current).toHaveFocus()
+    await expect(current).toHaveAttribute('aria-invalid', 'true')
   },
 }
 
@@ -299,14 +272,14 @@ export const TrackingError: Story = {
  * The alertdialog: focus starts in the field, Delete stays disabled until the typed email
  * matches (in any case), and while deleting nothing can close it
  */
-/** The demo account: one note in place of Profile, Email, Password and Delete account; Tracking still works */
+/** The demo account: one note in place of Profile, Password and Delete account; Tracking still works */
 export const DemoAccount: Story = {
   args: { name: 'demo', email: 'demo@example.com', demo: true },
   play: async ({ canvas }) => {
     const main = within(canvas.getByRole('main'))
     await expect(main.getByText('Demo account')).toBeInTheDocument()
     await expect(main.getByText(/resets to the sample data each night/)).toBeInTheDocument()
-    for (const gone of ['Profile', 'Email', 'Password', 'Delete account']) {
+    for (const gone of ['Profile', 'Password', 'Delete account']) {
       await expect(main.queryByText(gone, { exact: true })).not.toBeInTheDocument()
     }
     await expect(main.queryByRole('button', { name: 'Delete account' })).not.toBeInTheDocument()
@@ -317,6 +290,16 @@ export const DemoAccount: Story = {
 export const DemoAccountDark: Story = {
   ...DemoAccount,
   globals: { theme: 'dark' },
+}
+
+/** Until GET /account says whether this is the demo, only Tracking shows */
+export const AccountLoading: Story = {
+  args: { accountLoading: true },
+  play: async ({ canvas }) => {
+    const main = within(canvas.getByRole('main'))
+    const titles = main.getAllByRole('region').map((section) => within(section).getByRole('heading', { level: 2 }).textContent)
+    await expect(titles).toEqual(['Tracking'])
+  },
 }
 
 export const DeleteAccount: Story = {

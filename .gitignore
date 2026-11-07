@@ -55,3 +55,4 @@ storybook-static
 # Playwright
 packages/frontend/test-results/
 packages/frontend/playwright-report/
+.neon

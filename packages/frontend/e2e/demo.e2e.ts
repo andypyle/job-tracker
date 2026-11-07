@@ -1,6 +1,4 @@
-import { createClient } from '@supabase/supabase-js'
-import { supabaseEnv } from './env'
-import { admin, expect, test } from './fixtures'
+import { authRequest, expect, sql, test } from './fixtures'
 
 test('Try the demo signs in to the demo account, whose Settings explain what’s off', async ({ page }) => {
   await page.goto('/login')
@@ -13,21 +11,26 @@ test('Try the demo signs in to the demo account, whose Settings explain what’s
   await expect(page.getByRole('region', { name: 'Tracking' })).toBeVisible()
 })
 
-// A demo account of its own: a password change signs out the account's other sessions, even
-// though the guard keeps the password, which would sign out the tests using the seeded one
-test('a demo account’s name and password can’t be changed, even straight through Supabase', async ({ user }) => {
-  await admin.auth.admin.updateUserById(user.id, { app_metadata: { demo: true } })
-  const client = createClient(supabaseEnv.url, supabaseEnv.anonKey, {
-    auth: { autoRefreshToken: false, persistSession: false },
-  })
-  const { error } = await client.auth.signInWithPassword(user)
-  if (error) throw error
+// A demo account of its own, so the seeded one stays untouched for the other tests
+test('a demo account’s name and password can’t be changed, even straight through Neon Auth', async ({ user }) => {
+  await sql('INSERT INTO demo_users (user_id) VALUES ($1)', [user.id])
+  const signedIn = await authRequest('/sign-in/email', { email: user.email, password: user.password })
+  expect(signedIn.response.ok).toBe(true)
 
-  // Auth may report success: the database guard undoes the change rather than refusing it
-  await client.auth.updateUser({ data: { full_name: 'Not the demo' }, password: 'a-different-password' })
+  // Neon Auth reports success: the database guard undoes the change rather than refusing it
+  const renamed = await authRequest('/update-user', { name: 'Not the demo' }, signedIn.cookie)
+  expect(renamed.response.ok).toBe(true)
+  const changed = await authRequest(
+    '/change-password',
+    { currentPassword: user.password, newPassword: 'a-different-password', revokeOtherSessions: false },
+    signedIn.cookie,
+  )
+  expect(changed.response.ok).toBe(true)
 
-  const { data } = await admin.auth.admin.getUserById(user.id)
-  expect(data.user?.user_metadata.full_name).toBeUndefined()
-  const again = await client.auth.signInWithPassword(user)
-  expect(again.error).toBeNull()
+  const [row] = await sql<{ name: string }>('SELECT name FROM neon_auth."user" WHERE id = $1', [user.id])
+  expect(row.name).toBe('E2E Tester')
+  const again = await authRequest('/sign-in/email', { email: user.email, password: user.password })
+  expect(again.response.ok).toBe(true)
+  const changedTo = await authRequest('/sign-in/email', { email: user.email, password: 'a-different-password' })
+  expect(changedTo.response.status).toBe(401)
 })

@@ -1,5 +1,6 @@
 import axios from 'axios'
 import type {
+  Account,
   Application,
   ApplicationCreate,
   ApplicationStatus,
@@ -8,7 +9,7 @@ import type {
   UserSettings,
   UserSettingsUpdate,
 } from '@jobtracker/shared'
-import { supabase } from './supabase'
+import { getAccessToken } from './auth'
 
 /**
  * Axios instance for all FastAPI backend requests.
@@ -21,16 +22,12 @@ const api = axios.create({
   },
 })
 
-// Attach the Supabase JWT to every outgoing request.
+// Attach the Neon Auth JWT to every outgoing request
 api.interceptors.request.use(async (config) => {
-  const {
-    data: { session },
-  } = await supabase.auth.getSession()
-
-  if (session?.access_token) {
-    config.headers.Authorization = `Bearer ${session.access_token}`
+  const token = await getAccessToken()
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`
   }
-
   return config
 })
 
@@ -211,6 +208,12 @@ export async function getSettings(): Promise<UserSettings> {
 /** Save the settings; returns them as stored. */
 export async function updateSettings(data: UserSettingsUpdate): Promise<UserSettings> {
   const res = await api.patch<ApiEnvelope<UserSettings>>('/settings', data)
+  return unwrap(res.data)
+}
+
+/** The signed-in user's account: whether they're the public demo */
+export async function getAccount(): Promise<Account> {
+  const res = await api.get<ApiEnvelope<Account>>('/account')
   return unwrap(res.data)
 }
 

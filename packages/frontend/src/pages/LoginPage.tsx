@@ -3,7 +3,6 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import type { AuthError } from '@supabase/supabase-js'
 import { Alert } from '../components/Alert/Alert'
 import { AuthLayout } from '../components/AuthLayout/AuthLayout'
 import { Button } from '../components/Button/Button'
@@ -13,7 +12,7 @@ import { PasswordInput } from '../components/PasswordInput/PasswordInput'
 import { focusRing } from '../lib/classes'
 import { cn } from '../lib/cn'
 import { getDemoCredentials } from '../lib/demo'
-import { useAuth } from '../hooks/useAuth'
+import { useAuth, type AuthFailure } from '../hooks/useAuth'
 
 const schema = z.object({
   email: z.string().trim().min(1, 'Enter your email').email('Enter an email like name@example.com'),
@@ -120,9 +119,9 @@ export function LoginScreen({ onSignIn, onTryDemo }: LoginScreenProps) {
   )
 }
 
-// Supabase's wording for wrong credentials is terse; Figma's says what to do next
-function signInMessage(error: AuthError) {
-  return error.code === 'invalid_credentials'
+// Neon Auth's wording for wrong credentials is terse; Figma's says what to do next
+function signInMessage(error: AuthFailure) {
+  return error.code === 'INVALID_EMAIL_OR_PASSWORD'
     ? 'That email and password don’t match. Check them and try again.'
     : error.message
 }

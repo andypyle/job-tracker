@@ -1,56 +1,9 @@
-"""
-Tests for /applications CRUD routes.
+"""Tests for /applications CRUD routes, against the test database."""
+from unittest.mock import AsyncMock, patch
 
-All Supabase calls are mocked — no real database connections.
-The _get_user_client and _get_service_client helpers in the router create
-supabase Clients, so we patch supabase.create_client at the point it is
-imported by the router module.
-"""
-from unittest.mock import AsyncMock, MagicMock, patch
+from tests.conftest import make_application, make_user, sql
 
-import pytest
-
-from tests.conftest import TEST_APP_ID, TEST_USER_ID
-
-AUTH_HEADER = {"Authorization": "Bearer fake-token"}
-
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
-
-
-def _make_supabase_mock(data, *, single=False, raise_exc=None):
-    """
-    Build a mock that mimics the supabase-py query-builder chain:
-        client.table(...).select(...).eq(...).order(...).execute()
-    and optionally .single().execute().
-    """
-    execute_mock = MagicMock()
-    if raise_exc:
-        execute_mock.side_effect = raise_exc
-    else:
-        result = MagicMock()
-        result.data = data
-        execute_mock.return_value = result
-
-    chain = MagicMock()
-    chain.execute = execute_mock
-    chain.eq = MagicMock(return_value=chain)
-    chain.order = MagicMock(return_value=chain)
-    chain.single = MagicMock(return_value=chain)
-    chain.lte = MagicMock(return_value=chain)
-
-    table_mock = MagicMock()
-    table_mock.select = MagicMock(return_value=chain)
-    table_mock.insert = MagicMock(return_value=chain)
-    table_mock.update = MagicMock(return_value=chain)
-    table_mock.delete = MagicMock(return_value=chain)
-
-    client_mock = MagicMock()
-    client_mock.table = MagicMock(return_value=table_mock)
-    client_mock.postgrest = MagicMock()
-
-    return client_mock, chain
+MISSING_ID = "00000000-0000-4000-8000-00000000abcd"
 
 
 # ---------------------------------------------------------------------------
@@ -58,58 +11,34 @@ def _make_supabase_mock(data, *, single=False, raise_exc=None):
 # ---------------------------------------------------------------------------
 
 
-def test_list_applications_returns_user_data(client):
-    """GET /applications returns the rows from Supabase for the authenticated user."""
-    rows = [
-        {
-            "id": TEST_APP_ID,
-            "user_id": TEST_USER_ID,
-            "job_title": "Software Engineer",
-            "company": "Acme",
-            "status": "Applied",
-            "date_applied": "2026-04-01",
-            "is_referral": False,
-            "created_at": "2026-04-01T00:00:00",
-            "updated_at": "2026-04-01T00:00:00",
-        }
-    ]
-    client_mock, _ = _make_supabase_mock(rows)
+def test_list_applications_returns_only_the_users_rows_newest_first(client, user_id):
+    older = make_application(user_id, company="Older", date_applied="2026-09-01")
+    newer = make_application(user_id, company="Newer", date_applied="2026-10-01")
+    make_application(make_user("other@example.com"), company="Someone else's")
 
-    with patch("app.routers.applications.create_client", return_value=client_mock):
-        resp = client.get("/applications", headers=AUTH_HEADER)
+    resp = client.get("/applications")
 
     assert resp.status_code == 200
     body = resp.json()
     assert body["error"] is None
-    assert len(body["data"]) == 1
-    assert body["data"][0]["id"] == TEST_APP_ID
+    assert [row["id"] for row in body["data"]] == [newer, older]
+    assert body["data"][0]["user_id"] == user_id
+    assert body["data"][0]["date_applied"] == "2026-10-01"
+    assert body["data"][0]["status"] == "Applied"
 
 
-def test_list_applications_filters_by_status(client):
-    """GET /applications?status=Applied calls .eq('status', 'Applied') on the query."""
-    rows = [
-        {
-            "id": TEST_APP_ID,
-            "user_id": TEST_USER_ID,
-            "job_title": "Engineer",
-            "company": "Corp",
-            "status": "Applied",
-            "date_applied": "2026-04-01",
-            "is_referral": False,
-            "created_at": "2026-04-01T00:00:00",
-            "updated_at": "2026-04-01T00:00:00",
-        }
-    ]
-    client_mock, chain = _make_supabase_mock(rows)
+def test_list_applications_filters_by_status(client, user_id):
+    make_application(user_id, company="Applied Co")
+    interviewing = make_application(user_id, company="Interview Co", status="Interviewing")
 
-    with patch("app.routers.applications.create_client", return_value=client_mock):
-        resp = client.get("/applications?status=Applied", headers=AUTH_HEADER)
+    resp = client.get("/applications", params={"status": "Interviewing"})
 
     assert resp.status_code == 200
-    # Verify .eq was called at least once with status filtering
-    eq_calls = [str(call) for call in chain.eq.call_args_list]
-    status_filter_called = any("status" in c and "Applied" in c for c in eq_calls)
-    assert status_filter_called, f"Expected status filter call, got: {eq_calls}"
+    assert [row["id"] for row in resp.json()["data"]] == [interviewing]
+
+
+def test_list_applications_rejects_unknown_status(client):
+    assert client.get("/applications", params={"status": "Ghosted"}).status_code == 422
 
 
 # ---------------------------------------------------------------------------
@@ -117,139 +46,80 @@ def test_list_applications_filters_by_status(client):
 # ---------------------------------------------------------------------------
 
 
+def test_get_application_includes_history_and_signed_urls(client, user_id):
+    app_id = make_application(user_id, resume_path=f"{user_id}/x/resume.pdf")
+    sql(
+        "INSERT INTO application_status_history (application_id, user_id, old_status, new_status) VALUES ($1, $2, NULL, 'Applied')",
+        app_id,
+        user_id,
+    )
+
+    with patch("app.routers.applications.get_signed_url", new_callable=AsyncMock, return_value="https://signed") as sign:
+        resp = client.get(f"/applications/{app_id}")
+
+    assert resp.status_code == 200
+    data = resp.json()["data"]
+    assert data["resume_url"] == "https://signed"
+    assert data["cover_letter_url"] is None
+    sign.assert_awaited_once_with(f"{user_id}/x/resume.pdf")
+    assert [(h["old_status"], h["new_status"]) for h in data["status_history"]] == [(None, "Applied")]
+
+
 def test_get_application_not_found(client):
-    """GET /applications/{id} returns 404 when supabase single() raises (no row)."""
-    client_mock, _ = _make_supabase_mock(None, raise_exc=Exception("No rows found"))
+    assert client.get(f"/applications/{MISSING_ID}").status_code == 404
 
-    with patch("app.routers.applications.create_client", return_value=client_mock):
-        resp = client.get(f"/applications/{TEST_APP_ID}", headers=AUTH_HEADER)
 
-    assert resp.status_code == 404
-    assert "not found" in resp.json()["detail"].lower()
+def test_get_application_with_malformed_id_is_not_found(client):
+    assert client.get("/applications/not-a-uuid").status_code == 404
+
+
+def test_get_application_of_another_user_is_not_found(client):
+    other = make_application(make_user("other@example.com"))
+    assert client.get(f"/applications/{other}").status_code == 404
+    assert client.get(f"/applications/{other}/history").status_code == 404
 
 
 # ---------------------------------------------------------------------------
 # POST /applications
 # ---------------------------------------------------------------------------
 
+NEW_APPLICATION = {"job_title": "Software Engineer", "company": "Acme", "date_applied": "2026-04-01"}
 
-def test_create_application_defaults_status_to_applied(client):
-    """POST /applications creates with status='Applied' when no status is given."""
-    created_row = {
-        "id": TEST_APP_ID,
-        "user_id": TEST_USER_ID,
-        "job_title": "Senior Engineer",
-        "company": "TestCo",
-        "status": "Applied",
-        "date_applied": "2026-04-01",
-        "is_referral": False,
-        "resume_path": None,
-        "cover_letter_path": None,
-        "created_at": "2026-04-01T00:00:00",
-        "updated_at": "2026-04-01T00:00:00",
-    }
-    client_mock, chain = _make_supabase_mock([created_row])
 
-    payload = {
-        "job_title": "Senior Engineer",
-        "company": "TestCo",
-        "date_applied": "2026-04-01",
-        "is_referral": False,
-    }
-
-    with patch("app.routers.applications.create_client", return_value=client_mock):
-        resp = client.post("/applications", json=payload, headers=AUTH_HEADER)
+def test_create_application_defaults_status_to_applied_and_records_creation(client, user_id):
+    resp = client.post("/applications", json=NEW_APPLICATION)
 
     assert resp.status_code == 201
-    body = resp.json()
-    assert body["error"] is None
-    assert body["data"]["status"] == "Applied"
-
-    # Confirm the application insert (the first; the second is the history row) used status=Applied
-    insert_calls = client_mock.table.return_value.insert.call_args_list
-    assert insert_calls
-    inserted_data = insert_calls[0][0][0]
-    assert inserted_data["status"] == "Applied"
+    data = resp.json()["data"]
+    assert data["status"] == "Applied"
+    assert data["user_id"] == user_id
+    assert data["resume_url"] is None
+    assert [(h["old_status"], h["new_status"], h["is_automatic"]) for h in data["status_history"]] == [
+        (None, "Applied", False)
+    ]
 
 
 def test_create_application_accepts_status(client):
-    """POST /applications stores a chosen status and records it as the first history entry."""
-    created_row = {
-        "id": TEST_APP_ID,
-        "user_id": TEST_USER_ID,
-        "job_title": "Senior Engineer",
-        "company": "TestCo",
-        "status": "Interviewing",
-        "date_applied": "2026-04-01",
-        "is_referral": False,
-        "resume_path": None,
-        "cover_letter_path": None,
-        "created_at": "2026-04-01T00:00:00",
-        "updated_at": "2026-04-01T00:00:00",
-    }
-    client_mock, _ = _make_supabase_mock([created_row])
-
-    payload = {
-        "job_title": "Senior Engineer",
-        "company": "TestCo",
-        "date_applied": "2026-04-01",
-        "status": "Interviewing",
-    }
-
-    with patch("app.routers.applications.create_client", return_value=client_mock):
-        resp = client.post("/applications", json=payload, headers=AUTH_HEADER)
+    resp = client.post("/applications", json={**NEW_APPLICATION, "status": "Interviewing"})
 
     assert resp.status_code == 201
-    assert resp.json()["data"]["status"] == "Interviewing"
-    insert_calls = [c[0][0] for c in client_mock.table.return_value.insert.call_args_list]
-    assert insert_calls[0]["status"] == "Interviewing"
-    assert insert_calls[1]["new_status"] == "Interviewing"
-    assert insert_calls[1]["old_status"] is None
+    data = resp.json()["data"]
+    assert data["status"] == "Interviewing"
+    assert data["status_history"][0]["new_status"] == "Interviewing"
 
 
 def test_create_application_rejects_unknown_status(client):
-    """POST /applications returns 422 for a status that isn't one of the six."""
-    payload = {
-        "job_title": "Senior Engineer",
-        "company": "TestCo",
-        "date_applied": "2026-04-01",
-        "status": "Ghosted",
-    }
-    resp = client.post("/applications", json=payload, headers=AUTH_HEADER)
-    assert resp.status_code == 422
+    assert client.post("/applications", json={**NEW_APPLICATION, "status": "Ghosted"}).status_code == 422
 
 
-def test_create_application_sets_user_id_from_jwt(client):
-    """POST /applications always uses user_id from the JWT dep, not from the request body."""
-    created_row = {
-        "id": TEST_APP_ID,
-        "user_id": TEST_USER_ID,
-        "job_title": "Engineer",
-        "company": "Corp",
-        "status": "Applied",
-        "date_applied": "2026-04-01",
-        "is_referral": False,
-        "resume_path": None,
-        "cover_letter_path": None,
-        "created_at": "2026-04-01T00:00:00",
-        "updated_at": "2026-04-01T00:00:00",
-    }
-    client_mock, _ = _make_supabase_mock([created_row])
+def test_create_application_takes_user_id_from_the_jwt_not_the_body(client, user_id):
+    other = make_user("other@example.com")
 
-    payload = {
-        "job_title": "Engineer",
-        "company": "Corp",
-        "date_applied": "2026-04-01",
-        "is_referral": False,
-    }
-
-    with patch("app.routers.applications.create_client", return_value=client_mock):
-        resp = client.post("/applications", json=payload, headers=AUTH_HEADER)
+    resp = client.post("/applications", json={**NEW_APPLICATION, "user_id": other})
 
     assert resp.status_code == 201
-    insert_call_args = client_mock.table.return_value.insert.call_args
-    inserted_data = insert_call_args[0][0]
-    assert inserted_data["user_id"] == TEST_USER_ID
+    assert resp.json()["data"]["user_id"] == user_id
+    assert sql("SELECT count(*) AS n FROM applications WHERE user_id = $1", other)[0]["n"] == 0
 
 
 # ---------------------------------------------------------------------------
@@ -257,22 +127,57 @@ def test_create_application_sets_user_id_from_jwt(client):
 # ---------------------------------------------------------------------------
 
 
+def test_update_application_changes_only_the_fields_sent(client, user_id):
+    app_id = make_application(user_id, company="Acme", notes="keep me")
+
+    resp = client.patch(f"/applications/{app_id}", json={"company": "Acme Corp"})
+
+    assert resp.status_code == 200
+    data = resp.json()["data"]
+    assert data["company"] == "Acme Corp"
+    assert data["notes"] == "keep me"
+    # No status change, no history
+    assert sql("SELECT count(*) AS n FROM application_status_history")[0]["n"] == 0
+
+
+def test_update_application_records_a_status_change(client, user_id):
+    app_id = make_application(user_id)
+
+    resp = client.patch(f"/applications/{app_id}", json={"status": "Interviewing"})
+
+    assert resp.status_code == 200
+    assert resp.json()["data"]["status"] == "Interviewing"
+    history = sql("SELECT old_status, new_status, is_automatic FROM application_status_history WHERE application_id = $1", app_id)
+    assert history == [{"old_status": "Applied", "new_status": "Interviewing", "is_automatic": False}]
+
+
+def test_update_application_to_the_same_status_records_nothing(client, user_id):
+    app_id = make_application(user_id)
+
+    assert client.patch(f"/applications/{app_id}", json={"status": "Applied"}).status_code == 200
+    assert sql("SELECT count(*) AS n FROM application_status_history")[0]["n"] == 0
+
+
+def test_update_application_can_clear_a_field(client, user_id):
+    app_id = make_application(user_id, notes="old")
+
+    resp = client.patch(f"/applications/{app_id}", json={"notes": None})
+
+    assert resp.json()["data"]["notes"] is None
+
+
+def test_update_application_needs_a_field(client, user_id):
+    app_id = make_application(user_id)
+    assert client.patch(f"/applications/{app_id}", json={}).status_code == 400
+
+
 def test_update_application_returns_404_for_wrong_user(client):
-    """PATCH /applications/{id} returns 404 when ownership check raises (different user's app)."""
-    # The first .single().execute() raises — simulating no row found for this user_id
-    client_mock, _ = _make_supabase_mock(None, raise_exc=Exception("No rows found"))
+    other = make_application(make_user("other@example.com"), company="Theirs")
 
-    payload = {"job_title": "Updated Title"}
-
-    with patch("app.routers.applications.create_client", return_value=client_mock):
-        resp = client.patch(
-            f"/applications/{TEST_APP_ID}",
-            json=payload,
-            headers=AUTH_HEADER,
-        )
+    resp = client.patch(f"/applications/{other}", json={"company": "Mine now"})
 
     assert resp.status_code == 404
-    assert "not found" in resp.json()["detail"].lower()
+    assert sql("SELECT company FROM applications WHERE id = $1", other)[0]["company"] == "Theirs"
 
 
 # ---------------------------------------------------------------------------
@@ -280,26 +185,29 @@ def test_update_application_returns_404_for_wrong_user(client):
 # ---------------------------------------------------------------------------
 
 
-def test_delete_application_cleans_up_files(client):
-    """DELETE /applications/{id} calls delete_file for resume and cover letter paths."""
-    existing_row = {
-        "id": TEST_APP_ID,
-        "resume_path": f"{TEST_USER_ID}/{TEST_APP_ID}/resume.pdf",
-        "cover_letter_path": f"{TEST_USER_ID}/{TEST_APP_ID}/cover_letter.pdf",
-    }
+def test_delete_application_cleans_up_files_and_history(client, user_id):
+    app_id = make_application(user_id, resume_path="u/a/resume.pdf", cover_letter_path="u/a/cover_letter.pdf")
+    sql(
+        "INSERT INTO application_status_history (application_id, user_id, new_status) VALUES ($1, $2, 'Applied')",
+        app_id,
+        user_id,
+    )
 
-    # First call returns existing row (ownership check), second call is the delete
-    client_mock, chain = _make_supabase_mock(existing_row)
-
-    with (
-        patch("app.routers.applications.create_client", return_value=client_mock),
-        patch("app.routers.applications.delete_file", new_callable=AsyncMock) as mock_delete,
-    ):
-        resp = client.delete(f"/applications/{TEST_APP_ID}", headers=AUTH_HEADER)
+    with patch("app.routers.applications.delete_file", new_callable=AsyncMock) as delete_file:
+        resp = client.delete(f"/applications/{app_id}")
 
     assert resp.status_code == 204
+    assert [c.args[0] for c in delete_file.await_args_list] == ["u/a/resume.pdf", "u/a/cover_letter.pdf"]
+    assert sql("SELECT count(*) AS n FROM applications")[0]["n"] == 0
+    assert sql("SELECT count(*) AS n FROM application_status_history")[0]["n"] == 0
 
-    # Both file paths should have been passed to delete_file
-    delete_calls = [call.args[0] for call in mock_delete.call_args_list]
-    assert f"{TEST_USER_ID}/{TEST_APP_ID}/resume.pdf" in delete_calls
-    assert f"{TEST_USER_ID}/{TEST_APP_ID}/cover_letter.pdf" in delete_calls
+
+def test_delete_application_of_another_user_is_not_found(client):
+    other = make_application(make_user("other@example.com"))
+
+    with patch("app.routers.applications.delete_file", new_callable=AsyncMock) as delete_file:
+        resp = client.delete(f"/applications/{other}")
+
+    assert resp.status_code == 404
+    delete_file.assert_not_awaited()
+    assert sql("SELECT count(*) AS n FROM applications")[0]["n"] == 1

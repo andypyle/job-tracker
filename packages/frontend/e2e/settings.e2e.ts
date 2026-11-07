@@ -1,7 +1,4 @@
-import { admin, expect, signIn, test } from './fixtures'
-
-// Changing the email isn't covered here: it sends mail, and CI runs Supabase without its mail
-// server. The Settings stories cover the form.
+import { expect, signIn, signInWithForm, sql, test } from './fixtures'
 
 test('the sidebar opens Settings, and a new name shows there and survives a reload', async ({ page, user }) => {
   await signIn(page, user)
@@ -33,8 +30,8 @@ test('the Unlikely cutoff saves, and Never is stored as null', async ({ page, us
   await tracking.getByRole('button', { name: 'Save' }).click()
   await expect(page.getByText('Applications stay in Applied until you move them.')).toBeVisible()
 
-  const { data } = await admin.from('user_settings').select('unlikely_after_days').eq('user_id', user.id).single()
-  expect(data).toEqual({ unlikely_after_days: null })
+  const rows = await sql('SELECT unlikely_after_days FROM user_settings WHERE user_id = $1', [user.id])
+  expect(rows).toEqual([{ unlikely_after_days: null }])
 
   await page.reload()
   await expect(select).toHaveText('Never')
@@ -52,6 +49,7 @@ test('a new password works at the next sign-in', async ({ page, user }) => {
   await page.goto('/settings')
   const section = page.getByRole('region', { name: 'Password' })
   const password = `new-${user.password}`
+  await section.getByLabel('Current password').fill(user.password)
   await section.getByLabel('New password', { exact: true }).fill(password)
   await section.getByLabel('Confirm new password').fill(password)
   await section.getByRole('button', { name: 'Change password' }).click()
@@ -59,17 +57,14 @@ test('a new password works at the next sign-in', async ({ page, user }) => {
 
   await page.getByRole('complementary').getByRole('button', { name: 'Sign out' }).click()
   await expect(page).toHaveURL('/login')
-  await signIn(page, { email: user.email, password })
+  await signInWithForm(page, { email: user.email, password })
 })
 
 test('deleting the account removes the user and their applications, then signs out', async ({ page, user }) => {
-  const { error } = await admin.from('applications').insert({
-    user_id: user.id,
-    job_title: 'Platform Engineer',
-    company: 'Example Corp',
-    date_applied: '2026-10-01',
-  })
-  expect(error).toBeNull()
+  await sql(
+    `INSERT INTO applications (user_id, job_title, company, date_applied) VALUES ($1, 'Platform Engineer', 'Example Corp', '2026-10-01')`,
+    [user.id],
+  )
 
   await signIn(page, user)
   await page.goto('/settings')
@@ -82,10 +77,8 @@ test('deleting the account removes the user and their applications, then signs o
   await confirm.click()
 
   await expect(page).toHaveURL('/login')
-  const { data: deleted } = await admin.auth.admin.getUserById(user.id)
-  expect(deleted.user).toBeNull()
-  const { data: applications } = await admin.from('applications').select('id').eq('user_id', user.id)
-  expect(applications).toEqual([])
+  expect(await sql('SELECT id FROM neon_auth."user" WHERE id = $1', [user.id])).toEqual([])
+  expect(await sql('SELECT id FROM applications WHERE user_id = $1', [user.id])).toEqual([])
 
   // The old session is gone: the app sends you back to sign in
   await page.goto('/settings')

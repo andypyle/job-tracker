@@ -1,7 +1,5 @@
-import { createClient } from '@supabase/supabase-js'
 import { randomUUID } from 'node:crypto'
-import { demoUser, expect, signIn, test } from './fixtures'
-import { supabaseEnv } from './env'
+import { deleteUsers, demoUser, expect, signIn, signInWithForm, test } from './fixtures'
 
 test('signed-out visitors are sent to the login page', async ({ page }) => {
   await page.goto('/jobs/active')
@@ -23,10 +21,7 @@ test('a new account can register and lands on the dashboard', async ({ page }) =
     await expect(page.getByRole('complementary').getByText(email)).toBeVisible()
   } finally {
     // Clean up the account the UI created
-    const admin = createClient(supabaseEnv.url, supabaseEnv.serviceRoleKey, { auth: { persistSession: false } })
-    const { data } = await admin.auth.admin.listUsers({ perPage: 1000 })
-    const created = data.users.find((u) => u.email === email)
-    if (created) await admin.auth.admin.deleteUser(created.id)
+    await deleteUsers({ emails: [email] })
   }
 })
 
@@ -38,8 +33,8 @@ test('signing out returns to the login page', async ({ page, user }) => {
   await expect(page).toHaveURL('/login')
 })
 
-test('the seeded demo account sees its applications', async ({ page }) => {
-  await signIn(page, demoUser)
+test('the seeded demo account signs in and sees its applications', async ({ page }) => {
+  await signInWithForm(page, demoUser)
   await page.goto('/jobs/active')
   await expect(page.getByRole('link', { name: 'Senior Product Designer' })).toBeVisible()
   await page.goto('/jobs/rejected')

@@ -2,20 +2,14 @@ import logging
 from datetime import datetime
 from typing import Optional
 
-from fastapi import APIRouter, Depends, Header
+from fastapi import APIRouter, Depends
 
-from app.config import get_settings
+from app import db
 from app.dependencies import get_current_user
-from supabase import Client, create_client
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
-
-
-def _get_admin_client() -> Client:
-    settings = get_settings()
-    return create_client(settings.SUPABASE_URL, settings.SUPABASE_SERVICE_ROLE_KEY)
 
 
 def _round_or_none(value: Optional[float], ndigits: int = 1) -> Optional[float]:
@@ -24,16 +18,15 @@ def _round_or_none(value: Optional[float], ndigits: int = 1) -> Optional[float]:
     return round(value, ndigits)
 
 
-def _parse_dt(s: str) -> datetime:
-    """Parse an ISO-8601 datetime string returned by Supabase (handles Z and +00:00)."""
-    return datetime.fromisoformat(s.replace("Z", "+00:00"))
+def _parse_dt(value: datetime | str) -> datetime:
+    """asyncpg returns datetimes; an ISO-8601 string (Z or +00:00) is accepted too."""
+    if isinstance(value, datetime):
+        return value
+    return datetime.fromisoformat(value.replace("Z", "+00:00"))
 
 
 @router.get("/timeline")
-async def get_timeline_stats(
-    authorization: str = Header(...),
-    user_id: str = Depends(get_current_user),
-):
+async def get_timeline_stats(user_id: str = Depends(get_current_user)):
     """
     Compute three timeline metrics from application_status_history for the
     authenticated user:
@@ -50,17 +43,19 @@ async def get_timeline_stats(
     Day averages are rounded to 1 decimal place and the conversion rate to 3;
     all are null when sample size is 0.
     """
-    admin_client = _get_admin_client()
-
     # Fetch all history rows for this user in a single round-trip.
     # We reuse this data for all three metrics to avoid redundant queries.
     try:
-        all_rows = (
-            admin_client.table("application_status_history")
-            .select("application_id, old_status, new_status, changed_at")
-            .eq("user_id", user_id)
-            .execute()
-        ).data or []
+        all_rows = [
+            dict(row)
+            for row in await db.pool().fetch(
+                """
+                SELECT application_id, old_status, new_status, changed_at
+                FROM public.application_status_history WHERE user_id = $1
+                """,
+                user_id,
+            )
+        ]
     except Exception:
         logger.exception("get_timeline_stats: failed to fetch history for user %s", user_id)
         all_rows = []
@@ -119,12 +114,12 @@ async def get_timeline_stats(
         interviewed_app_ids: set[str] = set()
 
         try:
-            current_apps = (
-                admin_client.table("applications")
-                .select("id, status")
-                .eq("user_id", user_id)
-                .execute()
-            ).data or []
+            current_apps = [
+                dict(row)
+                for row in await db.pool().fetch(
+                    "SELECT id, status FROM public.applications WHERE user_id = $1", user_id
+                )
+            ]
         except Exception:
             logger.exception("get_timeline_stats: failed to fetch applications for user %s", user_id)
             current_apps = []
