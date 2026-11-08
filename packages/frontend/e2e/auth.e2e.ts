@@ -47,3 +47,23 @@ test('a user never sees another user’s applications', async ({ page, user }) =
   await expect(page.getByRole('heading', { level: 2, name: 'Add your first application' })).toBeVisible()
   await expect(page.getByRole('link', { name: 'Senior Product Designer' })).toHaveCount(0)
 })
+
+// Neon Auth's own error codes drive these messages (see attempt in src/hooks/useAuth.ts)
+test('a wrong password gets the friendly message, not Neon Auth’s', async ({ page, user }) => {
+  await page.goto('/login')
+  await page.getByLabel('Email').fill(user.email)
+  await page.getByLabel('Password', { exact: true }).fill('not-the-password')
+  await page.getByRole('button', { name: 'Sign in' }).click()
+  await expect(page.getByRole('alert')).toHaveText('That email and password don’t match. Check them and try again.')
+})
+
+test('registering with an email that has an account marks the email field', async ({ page, user }) => {
+  await page.goto('/register')
+  await page.getByLabel('Name').fill('Someone Else')
+  await page.getByLabel('Email').fill(user.email)
+  await page.getByLabel('Password', { exact: true }).fill('correct-horse-battery-staple')
+  await page.getByLabel('Confirm password').fill('correct-horse-battery-staple')
+  await page.getByRole('button', { name: 'Create account' }).click()
+  await expect(page.getByText('There’s already an account with this email. Sign in instead?')).toBeVisible()
+  await expect(page.getByLabel('Email')).toHaveAttribute('aria-invalid', 'true')
+})

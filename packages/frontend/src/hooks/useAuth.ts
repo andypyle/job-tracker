@@ -31,6 +31,14 @@ interface UseAuthReturn {
   updateName: (name: string) => Result
   /** Neon Auth needs the current password to set a new one. Other sessions stay signed in. */
   changePassword: (currentPassword: string, newPassword: string) => Result
+  /**
+   * Emails a reset link if there's an account for `email`, and answers the same either way, so
+   * it doesn't reveal who has one. The link opens `redirectTo?token=…`, or `?error=INVALID_TOKEN`
+   * once it's used or expired (after an hour).
+   */
+  requestPasswordReset: (email: string, redirectTo: string) => Result
+  /** Sets a new password with the token from the link. INVALID_TOKEN when it's used or expired. */
+  resetPassword: (token: string, newPassword: string) => Result
 }
 
 function failure(error: { code?: string; message?: string; statusText?: string } | null | undefined): AuthFailure | null {
@@ -38,14 +46,24 @@ function failure(error: { code?: string; message?: string; statusText?: string }
   return { code: error.code, message: error.message || error.statusText || 'Something went wrong. Try again.' }
 }
 
-/** Calls an auth method that may also throw (the Neon wrapper throws on HTTP errors) */
+/**
+ * Calls an auth method that may also throw: Neon's wrapper throws on an HTTP error. Its thrown
+ * error's `code` is a Supabase-style one (INVALID_TOKEN becomes bad_jwt); Better Auth's own code,
+ * which the callers check, is on `.error.code`.
+ */
 async function attempt<T>(call: () => Promise<{ data: T; error: Parameters<typeof failure>[0] }>) {
   try {
     const { data, error } = await call()
     return { data, error: failure(error) }
   } catch (err) {
-    const thrown = err as { code?: string; message?: string } | undefined
-    return { data: null, error: failure({ code: thrown?.code, message: thrown?.message }) }
+    const thrown = err as { code?: string; message?: string; error?: { code?: string; message?: string } } | undefined
+    return {
+      data: null,
+      error: failure({
+        code: thrown?.error?.code ?? thrown?.code,
+        message: thrown?.error?.message ?? thrown?.message,
+      }),
+    }
   }
 }
 
@@ -90,6 +108,16 @@ export function useAuth(): UseAuthReturn {
       const { error } = await attempt(() =>
         authClient.changePassword({ currentPassword, newPassword, revokeOtherSessions: false }),
       )
+      return { error }
+    },
+
+    requestPasswordReset: async (email, redirectTo) => {
+      const { error } = await attempt(() => authClient.requestPasswordReset({ email, redirectTo }))
+      return { error }
+    },
+
+    resetPassword: async (token, newPassword) => {
+      const { error } = await attempt(() => authClient.resetPassword({ token, newPassword }))
       return { error }
     },
   }

@@ -60,6 +60,18 @@ test('a new password works at the next sign-in', async ({ page, user }) => {
   await signInWithForm(page, { email: user.email, password })
 })
 
+test('a wrong current password marks that field and changes nothing', async ({ page, user }) => {
+  await signIn(page, user)
+  await page.goto('/settings')
+  const section = page.getByRole('region', { name: 'Password' })
+  await section.getByLabel('Current password').fill('not-my-password')
+  await section.getByLabel('New password', { exact: true }).fill('a-brand-new-password')
+  await section.getByLabel('Confirm new password').fill('a-brand-new-password')
+  await section.getByRole('button', { name: 'Change password' }).click()
+  await expect(section.getByText('That’s not your current password.')).toBeVisible()
+  await expect(section.getByLabel('Current password')).toHaveAttribute('aria-invalid', 'true')
+})
+
 test('deleting the account removes the user and their applications, then signs out', async ({ page, user }) => {
   await sql(
     `INSERT INTO applications (user_id, job_title, company, date_applied) VALUES ($1, 'Platform Engineer', 'Example Corp', '2026-10-01')`,

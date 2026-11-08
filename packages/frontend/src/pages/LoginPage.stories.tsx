@@ -28,6 +28,7 @@ export const Default: Story = {
     await expect(canvas.getByLabelText('Email')).toHaveAttribute('autocomplete', 'email')
     await expect(canvas.getByLabelText('Password')).toHaveAttribute('autocomplete', 'current-password')
     await expect(canvas.getByRole('link', { name: 'Create one' })).toHaveAttribute('href', '/register')
+    await expect(canvas.getByRole('link', { name: 'Forgot password?' })).toHaveAttribute('href', '/forgot-password')
     await expect(canvas.queryByRole('alert')).not.toBeInTheDocument()
     // Only when the demo is configured
     await expect(canvas.queryByRole('button', { name: 'Try the demo' })).not.toBeInTheDocument()
