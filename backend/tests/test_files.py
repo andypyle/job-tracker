@@ -83,6 +83,20 @@ def test_delete_file_removes_it_and_nulls_the_path(client, user_id, file_type):
     assert sql(f"SELECT {file_type}_path AS path FROM applications WHERE id = $1", app_id)[0]["path"] is None
 
 
+@pytest.mark.parametrize("file_type", ["resume", "cover_letter"])
+def test_delete_file_of_another_users_application_is_not_found(client, file_type):
+    owner = make_user("other@example.com")
+    path = f"{owner}/x/{file_type}.pdf"
+    other = make_application(owner, **{f"{file_type}_path": path})
+
+    with patch("app.routers.files.delete_file", new_callable=AsyncMock) as delete_file:
+        resp = client.delete(f"/applications/{other}/{file_type}")
+
+    assert resp.status_code == 404
+    delete_file.assert_not_awaited()
+    assert sql(f"SELECT {file_type}_path AS path FROM applications WHERE id = $1", other)[0]["path"] == path
+
+
 def test_delete_file_without_a_file_still_succeeds(client, user_id):
     app_id = make_application(user_id)
 
