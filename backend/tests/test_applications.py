@@ -174,10 +174,13 @@ def test_update_application_needs_a_field(client, user_id):
 def test_update_application_returns_404_for_wrong_user(client):
     other = make_application(make_user("other@example.com"), company="Theirs")
 
-    resp = client.patch(f"/applications/{other}", json={"company": "Mine now"})
+    resp = client.patch(f"/applications/{other}", json={"company": "Mine now", "status": "Offer"})
 
     assert resp.status_code == 404
-    assert sql("SELECT company FROM applications WHERE id = $1", other)[0]["company"] == "Theirs"
+    assert sql("SELECT company, status::text FROM applications WHERE id = $1", other) == [
+        {"company": "Theirs", "status": "Applied"}
+    ]
+    assert sql("SELECT count(*) AS n FROM application_status_history")[0]["n"] == 0
 
 
 # ---------------------------------------------------------------------------

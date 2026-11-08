@@ -56,3 +56,22 @@ def test_update_settings_ignores_a_user_id_in_the_body(client, user_id):
     client.patch("/settings", json={"unlikely_after_days": 30, "user_id": other})
 
     assert sql("SELECT user_id FROM user_settings") == [{"user_id": user_id}]
+
+
+def test_get_settings_ignores_another_users_row(client):
+    other = make_user("other@example.com")
+    sql("INSERT INTO user_settings (user_id, unlikely_after_days) VALUES ($1, 60)", other)
+
+    assert client.get("/settings").json()["data"] == {"unlikely_after_days": 14}
+
+
+def test_update_settings_leaves_another_users_row_alone(client, user_id):
+    other = make_user("other@example.com")
+    sql("INSERT INTO user_settings (user_id, unlikely_after_days) VALUES ($1, 60)", other)
+
+    client.patch("/settings", json={"unlikely_after_days": 7})
+
+    assert sql("SELECT user_id, unlikely_after_days FROM user_settings ORDER BY unlikely_after_days") == [
+        {"user_id": user_id, "unlikely_after_days": 7},
+        {"user_id": other, "unlikely_after_days": 60},
+    ]
