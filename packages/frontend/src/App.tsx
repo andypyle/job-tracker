@@ -1,3 +1,4 @@
+import { useRef } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { useAuth } from './hooks/useAuth'
 import { Spinner } from './components/Spinner/Spinner'
@@ -42,16 +43,60 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 }
 
 // ---------------------------------------------------------------------------
+// Public-only route wrapper — sends signed-in users to the dashboard
+// ---------------------------------------------------------------------------
+function PublicOnlyRoute({ children }: { children: React.ReactNode }) {
+  const { user, loading } = useAuth()
+  // Better Auth sets isPending again while it refetches a signed-out session (as a sign-in
+  // does), so only the first resolution gets the spinner; later ones would unmount the form
+  // mid-submit.
+  const settled = useRef(false)
+  if (!loading) settled.current = true
+
+  if (user) {
+    return <Navigate to="/" replace />
+  }
+
+  if (loading && !settled.current) {
+    return <FullScreenSpinner />
+  }
+
+  return <>{children}</>
+}
+
+// ---------------------------------------------------------------------------
 // Root App
 // ---------------------------------------------------------------------------
 export default function App() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* Public routes */}
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/register" element={<RegisterPage />} />
-        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+        {/* Public routes; signed-in users skip the first three. A reset link can be opened
+            while signed in to another account, so /reset-password stays open. */}
+        <Route
+          path="/login"
+          element={
+            <PublicOnlyRoute>
+              <LoginPage />
+            </PublicOnlyRoute>
+          }
+        />
+        <Route
+          path="/register"
+          element={
+            <PublicOnlyRoute>
+              <RegisterPage />
+            </PublicOnlyRoute>
+          }
+        />
+        <Route
+          path="/forgot-password"
+          element={
+            <PublicOnlyRoute>
+              <ForgotPasswordPage />
+            </PublicOnlyRoute>
+          }
+        />
         <Route path="/reset-password" element={<ResetPasswordPage />} />
 
         {/* Protected routes, inside the app shell */}

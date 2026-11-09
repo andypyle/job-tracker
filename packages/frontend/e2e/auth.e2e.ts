@@ -25,6 +25,14 @@ test('a new account can register and lands on the dashboard', async ({ page }) =
   }
 })
 
+test('signed-in users skip the login, sign-up and forgot-password pages', async ({ page, user }) => {
+  await signIn(page, user)
+  for (const path of ['/login', '/register', '/forgot-password']) {
+    await page.goto(path)
+    await expect(page).toHaveURL('/')
+  }
+})
+
 test('signing out returns to the login page', async ({ page, user }) => {
   await signIn(page, user)
   await page.getByRole('button', { name: 'Sign out' }).click()
